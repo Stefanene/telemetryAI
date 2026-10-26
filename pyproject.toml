@@ -3,7 +3,16 @@ name = "telemetryai"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "aos",
     "deepagents>=0.7.30",
     "langchain-openai>=1.7.2",
     "python-dotenv>=1.2.4",
 ]
+
+[tool.uv.workspace]
+members = [
+    "aos",
+]
+
+[tool.uv.sources]
+aos = { workspace = true, editable = true }
