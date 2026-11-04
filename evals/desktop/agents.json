@@ -1,0 +1,6 @@
+{
+  "telemetry": "DESKTOP_CONTROL=1 uv run agent.py {instruction}",
+  "claude-code": "claude -p {instruction} --output-format json --allowedTools Bash",
+  "claude-code-gui": "claude -p {instruction} --output-format json --strict-mcp-config --mcp-config evals/desktop/computer-mcp.json --disallowedTools Bash",
+  "codex": "codex exec --skip-git-repo-check --dangerously-bypass-approvals-and-sandbox {instruction}"
+}
