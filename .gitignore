@@ -4,6 +4,4 @@
 __pycache__/
 
 uv.lock
-aos
-aos/*
-workspaces/
+screenshots/
