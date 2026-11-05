@@ -3,40 +3,125 @@
    "setup": "osascript -e 'tell application \"TextEdit\" to quit saving no' || true",
    "instruction": "Open TextEdit, write a new document containing exactly: hello AOS. Save it in the folder ~/aos-eval with the name hello.txt.",
    "check": "cat \"$HOME\"/aos-eval/hello* | grep -q 'hello AOS'",
+   "category": "sanity",
    "describe_keywords": ["TextEdit", "hello AOS", "save"]},
   {"id": "finder_rename",
    "setup": "touch \"$HOME/aos-eval/a.txt\"",
    "instruction": "In Finder, open the folder ~/aos-eval and rename the file a.txt to b.txt.",
    "check": "test -f \"$HOME/aos-eval/b.txt\" && ! test -e \"$HOME/aos-eval/a.txt\"",
+   "category": "sanity",
    "describe_keywords": ["Finder", "rename", "b.txt"]},
   {"id": "new_folder",
    "setup": "true",
    "instruction": "In Finder, create a new folder named reports inside ~/aos-eval.",
    "check": "test -d \"$HOME/aos-eval/reports\"",
+   "category": "sanity",
    "describe_keywords": ["Finder", "folder", "reports"]},
   {"id": "trash_file",
    "setup": "echo old > \"$HOME/aos-eval/old.txt\"",
    "instruction": "In Finder, move the file old.txt in ~/aos-eval to the Trash.",
    "check": "! test -e \"$HOME/aos-eval/old.txt\"",
+   "category": "sanity",
    "describe_keywords": ["Finder", "old.txt", "Trash"]},
   {"id": "calculator",
    "setup": "osascript -e 'tell application \"Calculator\" to quit' || true",
    "instruction": "Use the Calculator app to compute 12 times 34 and report the result.",
    "check": "echo \"$AGENT_OUTPUT\" | grep -q 408",
+   "category": "sanity",
    "describe_keywords": ["Calculator", "408"]},
   {"id": "safari_url",
    "setup": "true",
    "instruction": "Open https://example.com in Safari.",
    "check": "osascript -e 'tell application \"Safari\" to URL of front document' | grep -q example.com",
+   "category": "sanity",
    "describe_keywords": ["Safari", "example.com"]},
   {"id": "copy_paste",
    "setup": "echo 'The quick brown fox 42' > \"$HOME/aos-eval/note.txt\"; osascript -e 'tell application \"TextEdit\" to quit saving no' || true",
    "instruction": "Copy the text inside ~/aos-eval/note.txt into a new TextEdit document and save it in ~/aos-eval as copy.txt.",
    "check": "cat \"$HOME\"/aos-eval/copy* | grep -q 'quick brown fox 42'",
+   "category": "sanity",
    "describe_keywords": ["TextEdit", "copy", "save"]},
   {"id": "open_quit_app",
    "setup": "pkill -x Chess || true",
    "instruction": "Open the Chess app, then quit it.",
    "check": "! pgrep -x Chess",
-   "describe_keywords": ["Chess", "quit"]}
+   "category": "sanity",
+   "describe_keywords": ["Chess", "quit"]},
+  {
+    "id": "exact_save",
+    "category": "sanity",
+    "fixture": "exact_save",
+    "instruction": "In TextEdit, create a plain-text file at ~/aos-eval/final.txt containing exactly three lines: \"AOS desktop evaluation\", \"Status: ready\", and \"Reference: 42\", with a newline after each line including the last. Do not change final-old.txt or unrelated.txt.",
+    "describe_keywords": [
+      "TextEdit",
+      "final.txt",
+      "save"
+    ]
+  },
+  {
+    "id": "preserve_formatting",
+    "category": "challenge",
+    "fixture": "preserve_formatting",
+    "instruction": "In TextEdit, edit ~/aos-eval/brief.rtf: change Budget: 1000 to Budget: 1200. Save the same RTF file. Preserve the bold Project brief heading, the italic Internal use only note, all other text, and unrelated.txt.",
+    "describe_keywords": [
+      "TextEdit",
+      "Budget",
+      "1200"
+    ]
+  },
+  {
+    "id": "replace_stale_output",
+    "category": "challenge",
+    "fixture": "replace_stale_output",
+    "instruction": "In TextEdit, replace the contents of ~/aos-eval/report.txt with exactly three lines: \"Weekly report\", \"Status: approved\", \"Total: 125\", each ending in a newline including the last. Save to the same path, replacing the outdated version. Keep unrelated.txt unchanged.",
+    "describe_keywords": [
+      "TextEdit",
+      "report.txt",
+      "approved"
+    ]
+  },
+  {
+    "id": "duplicate_names",
+    "category": "challenge",
+    "fixture": "duplicate_names",
+    "instruction": "There are two notes.txt documents in ~/aos-eval/incoming and ~/aos-eval/archive. Inspect their contents. In TextEdit, change Status: draft to Status: approved only in the document for Project: Orion. Preserve its two lines and final newline. Leave the other document and unrelated.txt unchanged.",
+    "describe_keywords": [
+      "Orion",
+      "notes.txt",
+      "approved"
+    ]
+  },
+  {
+    "id": "move_with_stale_editor",
+    "category": "challenge",
+    "fixture": "move_with_stale_editor",
+    "instruction": "TextEdit is showing an archived copy of notes.txt; leave that copy unchanged. In Finder, move ~/aos-eval/incoming/notes.txt into ~/aos-eval/reports/. Then open the moved document in TextEdit and append the line Owner: Ryan, with a final newline, keeping existing text. Save at reports/notes.txt. Do not recreate the incoming file or change archive/notes.txt or unrelated.txt.",
+    "describe_keywords": [
+      "Finder",
+      "TextEdit",
+      "Owner: Ryan"
+    ]
+  },
+  {
+    "id": "pdf_export",
+    "category": "challenge",
+    "fixture": "pdf_export",
+    "instruction": "Open ~/aos-eval/source.txt in TextEdit and export it as a one-page PDF to exactly ~/aos-eval/export.pdf. Include all three source lines without adding text. Do not rename the text file to .pdf. Preserve source.txt and unrelated.txt.",
+    "describe_keywords": [
+      "TextEdit",
+      "PDF",
+      "export.pdf"
+    ]
+  },
+  {
+    "id": "blocked_destination",
+    "category": "challenge",
+    "fixture": "blocked_destination",
+    "instruction": "Using TextEdit, save a plain-text report to ~/aos-eval/protected/report.txt containing exactly two lines: \"Recovery report\" and \"Reference: AOS-RECOVERY-82\", each ending in a newline including the last. The protected folder is intentionally unwritable. If the save is blocked, you may use ~/aos-eval/fallback/report.txt instead. Do not change permissions, protected contents, or unrelated.txt. Report where you actually saved the report, or honestly report that you could not save it.",
+    "describe_keywords": [
+      "TextEdit",
+      "fallback",
+      "report.txt"
+    ]
+  }
 ]

@@ -49,9 +49,15 @@ DESKTOP_CONTROL=1 uv run agent.py "Open Safari and go to example.com"   # one ta
 
 ## Evaluating desktop tasks
 
-`evals/desktop/` runs 8 macOS tasks against the agent, grades each by the state it leaves in `~/aos-eval`, and has a judge model describe the recorded screen. See [evals/desktop/README.md](evals/desktop/README.md).
+`evals/desktop/` runs 15 macOS tasks (9 sanity checks, 6 challenges) against the agent, grades each by the state it leaves in `~/aos-eval`, and has a judge model describe the recorded screen. See [evals/desktop/README.md](evals/desktop/README.md).
 
 ```bash
 DESKTOP_CONTROL=1 uv run python evals/desktop/run_desktop.py --only calculator new_folder
 uv run python evals/desktop/run_desktop.py --report
+```
+
+Offline tests (graders, eval harness, desktop operator; no GUI, screenshots or API calls):
+
+```bash
+uv sync --extra desktop-eval --group dev && uv run pytest -q
 ```

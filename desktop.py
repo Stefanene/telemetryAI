@@ -157,14 +157,22 @@ operator = Agent(
 operator_usage = Usage()
 
 
+async def run_operator(task: str, max_turns: int = 15) -> str:
+    """Run the operator on one task; failures come back as text that never reads as success."""
+    try:
+        result = await Runner.run(operator, task, max_turns=max_turns,
+                                  run_config=RunConfig(call_model_input_filter=add_screenshot, tracing_disabled=True))
+    except MaxTurnsExceeded:
+        return f"stopped: turn limit of {max_turns} reached before the task was finished"
+    except subprocess.CalledProcessError:
+        return ("failed: screenshot failed, so the task was not completed. Grant Screen Recording permission "
+                "to this terminal in System Settings > Privacy & Security > Screen Recording.")
+    operator_usage.add(result.context_wrapper.usage)
+    return result.final_output
+
+
 @function_tool
 async def operate_desktop(task: str) -> str:
     """Operate the user's Mac with mouse and keyboard to do a task in desktop apps (Finder, TextEdit,
     Safari, Calculator...). Give a self-contained task; returns what was done and any answer."""
-    try:
-        result = await Runner.run(operator, task, max_turns=15,
-                                  run_config=RunConfig(call_model_input_filter=add_screenshot, tracing_disabled=True))
-    except MaxTurnsExceeded:
-        return "stopped: turn limit of 15 reached before the task was finished"
-    operator_usage.add(result.context_wrapper.usage)
-    return result.final_output
+    return await run_operator(task)

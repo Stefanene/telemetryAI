@@ -6,3 +6,13 @@ dependencies = [
     "openai-agents>=0.24.0",
     "python-dotenv>=1.2.4",
 ]
+
+[project.optional-dependencies]
+desktop-eval = ["pypdf"]
+
+[dependency-groups]
+dev = ["pytest", "pypdf"]  # pypdf: PDF grader tests
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
