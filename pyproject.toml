@@ -9,6 +9,7 @@ dependencies = [
 
 [project.optional-dependencies]
 desktop-eval = ["pypdf"]
+# TODO(knowledge): add the graph library extra once chosen, e.g. knowledge = ["graphify"]
 
 [dependency-groups]
 dev = ["pytest", "pypdf"]  # pypdf: PDF grader tests

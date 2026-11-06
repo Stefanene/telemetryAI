@@ -64,6 +64,7 @@ def run_task(agent: str, command: str, task: dict, run_dir: Path, timeout: int, 
             subprocess.run(["bash", "-c", task["setup"]], check=True)
         recorder.start()
         started = time.time()
+        # TODO(telemetry): before = telemetry.snapshot()
         try:
             proc = subprocess.run(["bash", "-c", command.replace("{instruction}", shlex.quote(task["instruction"]))],
                                   capture_output=True, text=True, timeout=timeout, cwd=HERE.parent.parent)
@@ -74,6 +75,8 @@ def run_task(agent: str, command: str, task: dict, run_dir: Path, timeout: int, 
                 partial = partial.decode(errors="replace")
             output, code = f"{partial}\n(timeout after {timeout}s)", None
         seconds = round(time.time() - started, 1)
+        # TODO(telemetry): row["telemetry"] = {"before": before, "after": telemetry.snapshot(),
+        #                                      "files": telemetry.file_events(SANDBOX, started)}
         time.sleep(1)  # one more frame of the end state
         stop.set()
         recorder.join()
@@ -197,6 +200,7 @@ def main() -> None:
             row = run_task(args.agent, command, tasks[task_id], run_dir, args.timeout, args.track)
             row["describe_score"] = grade_description(judge, args.judge_model, tasks[task_id], run_dir)
             (run_dir / "run.json").write_text(json.dumps(row, indent=2) + "\n")
+            # TODO(knowledge): knowledge.record_eval(row, run_dir)
             print(f"  pass={row['pass']} {row['seconds']}s cost={row['cost_usd']} describe={row['describe_score']}")
     report()
 

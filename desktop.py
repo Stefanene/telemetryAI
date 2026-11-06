@@ -113,6 +113,8 @@ def act(tool: str, args: dict) -> str:
     with open(SCREENSHOT_DIR / "actions.jsonl", "a") as f:
         f.write(json.dumps({"time": datetime.now().isoformat(), "tool": tool, "args": args, "result": result,
                             "seconds": round(time.time() - started, 3)}) + "\n")
+    # TODO(telemetry): add telemetry.frontmost_app() to the action record above.
+    # TODO(knowledge): knowledge.record_action(tool, args, result, telemetry)
     print(f"[{tool} {json.dumps(args)}: {result}]")
     time.sleep(0.5)  # let the UI settle before the next screenshot
     return result
@@ -139,6 +141,7 @@ def press_key(combo: str) -> str:
 def add_screenshot(data: CallModelData) -> ModelInputData:
     """Before every operator model call, show it the current screen (sent once, not kept in history)."""
     path = take_screenshot()
+    # TODO(telemetry): send telemetry.ui_tree() as text next to the screenshot so clicks can target elements.
     shot = {"role": "user", "content": [{"type": "input_text", "text": "Latest screenshot:"},
                                         {"type": "input_image", "image_url": image_url(path), "detail": "auto"}]}
     return ModelInputData(input=[*data.model_data.input, shot], instructions=data.model_data.instructions)
@@ -159,6 +162,7 @@ operator_usage = Usage()
 
 async def run_operator(task: str, max_turns: int = 15) -> str:
     """Run the operator on one task; failures come back as text that never reads as success."""
+    # TODO(knowledge): prepend knowledge.related_context(task) to the task.
     try:
         result = await Runner.run(operator, task, max_turns=max_turns,
                                   run_config=RunConfig(call_model_input_filter=add_screenshot, tracing_disabled=True))
@@ -168,6 +172,7 @@ async def run_operator(task: str, max_turns: int = 15) -> str:
         return ("failed: screenshot failed, so the task was not completed. Grant Screen Recording permission "
                 "to this terminal in System Settings > Privacy & Security > Screen Recording.")
     operator_usage.add(result.context_wrapper.usage)
+    # TODO(knowledge): knowledge.record_run(task, result.final_output, SCREENSHOT_DIR / "actions.jsonl")
     return result.final_output
 
 

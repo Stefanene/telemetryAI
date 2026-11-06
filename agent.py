@@ -63,6 +63,7 @@ agent = Agent(
     ),
     model=model,
     # operate_desktop drives the real mouse and keyboard, so it is opt-in.
+    # TODO(telemetry, knowledge): + telemetry.TELEMETRY_TOOLS + [a `recall` tool over knowledge.query]
     tools=[look_at_screen] + ([operate_desktop] if os.environ.get("DESKTOP_CONTROL") == "1" else []),
 )
 

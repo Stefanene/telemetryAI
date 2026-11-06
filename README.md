@@ -61,3 +61,16 @@ Offline tests (graders, eval harness, desktop operator; no GUI, screenshots or A
 ```bash
 uv sync --extra desktop-eval --group dev && uv run pytest -q
 ```
+
+## Planned: knowledge graph and telemetry
+
+Placeholders for the next layer, not implemented yet:
+
+- `telemetry.py`: read-only macOS collectors (front app, windows, accessibility tree, system stats, logs, sandbox file events) to inform the agent's decisions and enrich eval runs.
+- `knowledge.py`: a knowledge graph of tasks, runs, apps, files, UI elements, actions and graded outcomes (backend to be chosen, e.g. graphify), for recall and decision/task evaluation. Stored in `knowledge/` (gitignored).
+
+Every place they plug in is marked:
+
+```bash
+grep -rn "TODO(knowledge\|TODO(telemetry" agent.py desktop.py evals/desktop/run_desktop.py pyproject.toml
+```
