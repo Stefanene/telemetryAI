@@ -21,6 +21,8 @@ from pathlib import Path
 from openai import OpenAI
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # the repo root, for desktop.py
+import knowledge
+import telemetry
 from desktop import image_url, take_screenshot  # noqa: E402
 
 if __package__:
@@ -32,7 +34,8 @@ HERE = Path(__file__).parent
 RUNS = HERE / "runs"
 SANDBOX = Path.home() / "aos-eval"
 QUESTION = "These screenshots were taken every 2 seconds while someone used this Mac. Describe step by step what they did."
-AGENT_TRACKS = {"telemetry": "gui", "claude-code-gui": "gui", "claude-code": "outcome", "codex": "outcome"}
+AGENT_TRACKS = {"telemetry": "gui+telemetry", "telemetry-screenshot": "gui",
+                "telemetry-flat": "gui+telemetry", "telemetry-graph": "gui+telemetry", "claude-code-gui": "gui", "claude-code": "outcome", "codex": "outcome"}
 
 
 def record(frames: Path, stop: threading.Event, every: float = 2.0) -> None:
@@ -64,10 +67,13 @@ def run_task(agent: str, command: str, task: dict, run_dir: Path, timeout: int, 
             subprocess.run(["bash", "-c", task["setup"]], check=True)
         recorder.start()
         started = time.time()
-        # TODO(telemetry): before = telemetry.snapshot()
+        workspace = telemetry.Workspace([SANDBOX])
+        before = workspace.scan()
+        environment = {**os.environ, "TELEMETRY_ROOTS": json.dumps([str(SANDBOX.resolve())]),
+                       "TELEMETRY_RUN_DIR": str((run_dir / "operator").resolve())}
         try:
             proc = subprocess.run(["bash", "-c", command.replace("{instruction}", shlex.quote(task["instruction"]))],
-                                  capture_output=True, text=True, timeout=timeout, cwd=HERE.parent.parent)
+                                  capture_output=True, text=True, timeout=timeout, cwd=HERE.parent.parent, env=environment)
             output, code = proc.stdout + proc.stderr[-3000:], proc.returncode
         except subprocess.TimeoutExpired as exc:
             partial = exc.stdout or ""
@@ -75,8 +81,7 @@ def run_task(agent: str, command: str, task: dict, run_dir: Path, timeout: int, 
                 partial = partial.decode(errors="replace")
             output, code = f"{partial}\n(timeout after {timeout}s)", None
         seconds = round(time.time() - started, 1)
-        # TODO(telemetry): row["telemetry"] = {"before": before, "after": telemetry.snapshot(),
-        #                                      "files": telemetry.file_events(SANDBOX, started)}
+        changes = telemetry.file_events(before, workspace.scan())
         time.sleep(1)  # one more frame of the end state
         stop.set()
         recorder.join()
@@ -90,6 +95,10 @@ def run_task(agent: str, command: str, task: dict, run_dir: Path, timeout: int, 
                 "category": task.get("category", "sanity"), "task": task["id"],
                 "rep": int(run_dir.name.rsplit("-", 1)[1]), "pass": passed, "check_detail": detail,
                 "exit_code": code, "seconds": seconds, "cost_usd": cost(output),
+                "file_events": changes, "model": os.environ.get("MODEL", "gpt-6-luna"),
+                "vision_model": os.environ.get("VISION_MODEL", os.environ.get("MODEL", "gpt-6-luna")),
+                "max_turns": int(os.environ.get("DESKTOP_MAX_TURNS", "40")),
+                "memory": "disabled",
                 **completion_review(run_dir, passed)}
     finally:
         stop.set()
@@ -160,13 +169,14 @@ def main() -> None:
     p.add_argument("--agent", default="telemetry", help="a name from agents.json")
     p.add_argument("--only", nargs="*", help="task ids to run (default: all)")
     p.add_argument("--category", choices=["sanity", "challenge"], help="run only sanity checks or challenge tasks")
-    p.add_argument("--track", choices=["gui", "outcome"], help="override the declared access track for this agent configuration")
+    p.add_argument("--track", choices=["gui", "gui+telemetry", "outcome"], help="override the declared access track for this agent configuration")
     p.add_argument("--reps", type=int, default=1)
     p.add_argument("--timeout", type=int, default=600, help="seconds per run")
     p.add_argument("--describe-only", action="store_true", help="re-grade descriptions of recorded runs")
     p.add_argument("--report", action="store_true")
     p.add_argument("--judge-model", default=os.environ.get("JUDGE_MODEL", "gpt-6-luna"),
                    help="OpenAI vision model that describes the frames (default JUDGE_MODEL or gpt-6-luna)")
+    p.add_argument("--skip-description", action="store_true", help="Skip the optional paid screenshot-description model")
     args = p.parse_args()
     tasks = {t["id"]: t for t in json.loads((HERE / "tasks.json").read_text())}
     selected = args.only or list(tasks)
@@ -176,9 +186,11 @@ def main() -> None:
     selected = [tid for tid in selected if not args.category or tasks[tid].get("category") == args.category]
     if args.report:
         return report()
-    judge = OpenAI()  # OPENAI_API_KEY from .env (loaded by desktop.py)
+    judge = None if args.skip_description else OpenAI()
 
     if args.describe_only:
+        if args.skip_description:
+            p.error("--describe-only and --skip-description cannot be combined")
         for path in sorted(RUNS.glob(f"{args.agent}/*/run.json")):
             row = json.loads(path.read_text())
             if row["task"] not in selected:
@@ -198,9 +210,9 @@ def main() -> None:
                 subprocess.run(["rm", "-rf", str(run_dir)], check=True)
             print(f"[{args.agent}] [{tasks[task_id].get('category', 'sanity').upper()}] {task_id} #{rep} ...", flush=True)
             row = run_task(args.agent, command, tasks[task_id], run_dir, args.timeout, args.track)
-            row["describe_score"] = grade_description(judge, args.judge_model, tasks[task_id], run_dir)
+            row["describe_score"] = None if args.skip_description else grade_description(judge, args.judge_model, tasks[task_id], run_dir)
             (run_dir / "run.json").write_text(json.dumps(row, indent=2) + "\n")
-            # TODO(knowledge): knowledge.record_eval(row, run_dir)
+            knowledge.record_eval(row, run_dir)  # Analysis only, never runtime retrieval
             print(f"  pass={row['pass']} {row['seconds']}s cost={row['cost_usd']} describe={row['describe_score']}")
     report()
 
