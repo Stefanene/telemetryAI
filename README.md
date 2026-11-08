@@ -47,6 +47,22 @@ DESKTOP_CONTROL=1 uv run agent.py                                  # chat, with 
 DESKTOP_CONTROL=1 uv run agent.py "Open Safari and go to example.com"   # one task, prints a JSON result line
 ```
 
+## Skills
+
+The desktop operator gets general working habits from `skills/*.md`. Currently one skill, `skills/desktop_task.md`, with sections on avoiding loops, finishing honestly, and handling files. Skills are deliberately **not** step-by-step solutions to specific tasks or apps, so eval results measure the agent rather than memorized answers. Each file has a short header and a few bullets:
+
+```markdown
+---
+name: desktop_task
+description: General habits for doing a desktop task without getting stuck, and reporting it honestly.
+triggers: always
+---
+### Avoid loops
+- If the app you need is already open or in front, use it. Do not search for it or launch it again.
+```
+
+A skill applies when one of its `triggers` appears as a word in the task (`triggers: always` applies to every task). Matching skills are appended to the operator's instructions for that run (`skills.py`, used in `desktop.run_operator`), so they cost no extra model turns. To add one, drop a new `.md` file in `skills/`; `tests/test_skills.py` checks every skill file parses.
+
 ## Evaluating desktop tasks
 
 `evals/desktop/` runs 15 macOS tasks (9 sanity checks, 6 challenges) against the agent, grades each by the state it leaves in `~/aos-eval`, and has a judge model describe the recorded screen. See [evals/desktop/README.md](evals/desktop/README.md).
