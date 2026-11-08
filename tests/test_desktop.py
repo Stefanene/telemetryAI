@@ -19,9 +19,11 @@ class FakeModel(Model):
     def __init__(self, turns):
         self.turns = list(turns)
         self.inputs = []
+        self.instructions = []
 
     async def get_response(self, system_instructions, input, *args, **kwargs):
         self.inputs.append(input)
+        self.instructions.append(system_instructions)
         turn = self.turns.pop(0) if len(self.turns) > 1 else self.turns[0]
         n = len(self.inputs)
         if isinstance(turn, str):
@@ -126,3 +128,10 @@ def test_add_screenshot_appends_one_image_without_touching_history():
     assert updated.instructions == "sys"
     image = updated.input[-1]["content"][1]
     assert image["type"] == "input_image" and image["image_url"].startswith("data:image/jpeg;base64,")
+
+
+def test_matching_skills_reach_the_operator_instructions(monkeypatch):
+    model = use_model(monkeypatch, ["Done"])
+    asyncio.run(desktop.run_operator("In Finder, rename the file a.txt to b.txt"))
+    assert model.instructions[0].startswith(desktop.SYSTEM)
+    assert "## desktop_task:" in model.instructions[0] and "### Avoid loops" in model.instructions[0]

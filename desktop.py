@@ -15,6 +15,8 @@ from agents import Agent, MaxTurnsExceeded, ModelSettings, RunConfig, Runner, Us
 from agents.run_config import CallModelData, ModelInputData
 from dotenv import load_dotenv
 
+import skills
+
 load_dotenv()
 
 # OpenAI vision model that reads screenshots and operates the desktop (OPENAI_API_KEY from .env).
@@ -163,8 +165,10 @@ operator_usage = Usage()
 async def run_operator(task: str, max_turns: int = 15) -> str:
     """Run the operator on one task; failures come back as text that never reads as success."""
     # TODO(knowledge): prepend knowledge.related_context(task) to the task.
+    # Skills (skills/*.md) whose triggers appear in the task are added to the instructions for this run.
+    agent = operator.clone(instructions=SYSTEM + skills.for_task(task))
     try:
-        result = await Runner.run(operator, task, max_turns=max_turns,
+        result = await Runner.run(agent, task, max_turns=max_turns,
                                   run_config=RunConfig(call_model_input_filter=add_screenshot, tracing_disabled=True))
     except MaxTurnsExceeded:
         return f"stopped: turn limit of {max_turns} reached before the task was finished"
