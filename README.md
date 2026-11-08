@@ -85,8 +85,21 @@ with a run-local SQLite evidence graph. It can inspect artifacts and check model
 against fresh file evidence. Checks are not independent task grades; cross-run memory is disabled.
 
 Configure explicit workspace roots with `TELEMETRY_ROOTS` (JSON array of absolute directory paths).
-Without roots, no file inspection is allowed. `TELEMETRY_MODE` selects `screenshot`, `flat`, `graph`,
-or `verified` (default). All modes use `DESKTOP_MAX_TURNS=40` by default.
+Without roots, no file inspection is allowed. `TELEMETRY_ENABLED=0|1` and
+`KNOWLEDGE_GRAPH_ENABLED=0|1` independently control the two capabilities. `VERIFICATION_ENABLED=0|1`
+controls optional file checks (requires telemetry, works without the graph). Legacy `TELEMETRY_MODE`
+presets still work; explicit flags win. All configurations use `DESKTOP_MAX_TURNS=40` by default.
+
+The harness presets `base`, `telemetry-only`, `knowledge-only` and `telemetry-knowledge` cover all four
+combinations with verification off. You can also override each capability directly:
+
+```bash
+DESKTOP_CONTROL=1 uv run python evals/desktop/run_desktop.py --agent base --telemetry --no-knowledge-graph --skip-description
+DESKTOP_CONTROL=1 uv run python evals/desktop/run_desktop.py --agent base --no-telemetry --knowledge-graph --skip-description
+```
+
+Graph-only organizes task/action history without reading UI/file telemetry. Graph-off runs do not
+construct or query a graph. Resolved switches are recorded and CLI variants get separate result folders.
 
 See [the implementation, fairness boundaries and evaluation handoff](docs/knowledge-telemetry.md)
 for configuration, comparisons, limitations and commands. No live performance improvement has yet

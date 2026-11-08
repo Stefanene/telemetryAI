@@ -1,22 +1,24 @@
 # Live evidence for desktop reasoning
 
-The operator receives a fresh screenshot plus bounded read-only observations before each decision.
+The operator always receives a fresh screenshot. With telemetry enabled it also receives bounded
+read-only observations before each decision. The knowledge graph is independently optional.
 It can inspect artifacts to resolve ambiguous document identity and verify saved outputs. A run-local
 SQLite graph relates paths, file versions, applications, windows, observations, actions and declared
 goal conditions. It records provenance and temporal order; it does not infer causation from order.
 
 ## Implemented data flow
 
-1. Create a unique run directory, initial workspace manifest, and empty graph. No previous graph is opened.
-2. Capture the main display. Collect the frontmost app, its windows and bounded accessibility tree;
-   scan the configured workspace for metadata/content hashes and changes.
+1. Create a unique run directory. Capture an initial workspace manifest only when telemetry is on;
+   create an empty graph only when the graph is on. No previous graph is opened.
+2. Capture the main display. When telemetry is enabled, collect the frontmost app, its windows and
+   bounded accessibility tree; scan the configured workspace for metadata/content hashes and changes.
 3. Append a decision packet to the screenshot input. The packet is ephemeral, not appended to the
    conversation history. Relevant state and inspection results are retained explicitly in run state.
 4. Execute one mouse/keyboard action. Record its transport result, invalidate old inspection/check
    status and collect observations before the next decision. `ok` only means the action executed.
-5. The operator can inspect a specific artifact: UTF-8 text, file metadata, PDF page count/text, or
+5. With telemetry enabled, the operator can inspect a specific artifact: UTF-8 text, file metadata, PDF page count/text, or
    rich-text semantic runs via native `textutil`. These tools cannot write files or run arbitrary commands.
-6. In verified mode, the model declares conditions citing exact passages from the user's request,
+6. With verification enabled, the model declares conditions citing exact passages from the user's request,
    then verifies and finishes. Checks re-read artifacts, including once more before returning the
    final operator result. Failed, missing or inaccessible evidence cannot produce a passed check.
 
@@ -62,14 +64,16 @@ an independent certificate. The parent is instructed to preserve these limitatio
 - File and accessibility access is an **additional observation capability**. Report the enhanced agent
   as GUI actions plus telemetry, not as screenshot-only GUI interaction. Compare to an equal-information
   baseline when attributing improvements to the graph.
-- `flat` and `graph` expose the same current observations, prior inspection summaries and retained state
-  facts. Flat mode presents relationships as standalone subject/predicate/object records; graph mode
-  uses deduplicated nodes/edges. Both include the same inferred move evidence. Representation, length
-  and truncation can still differ: log them and include token cost in results. This is a representation
-  ablation, not evidence of a universally better graph algorithm.
-- `verified` adds condition/verification tools and instructions to graph mode. Any improvement there
-  belongs to that combined intervention, not solely the graph. The shared skills and action tools
-  remain identical across modes.
+- Telemetry and the graph are independent switches. Telemetry-only and telemetry+graph receive the
+  same raw UI/file observations and inspection tools. The graph adds retained relationships and
+  structured action history; telemetry-only does not construct a hidden graph. This measures the
+  graph mechanism, including its retention/inferences, rather than just alternative JSON formatting.
+- Graph-only uses the user task and executed-action history already available to the base agent.
+  It does not collect UI trees, front-app/window data, workspace manifests or artifact contents.
+  No visual facts are invented from screenshots; screenshots continue through the ordinary base input.
+- Verification is independently switchable, requires telemetry, and works with the graph off.
+  Keep verification off across the four-way telemetry/graph experiment to avoid confounding its effect.
+  Compare it separately with identical telemetry/graph settings. Shared skills/actions/budgets stay fixed.
 - General user documents can themselves contain instructions; observations are explicitly labeled
   untrusted data. Redaction minimizes obvious credentials but does not guarantee secret-free arbitrary
   text or screenshots. Only configure roots appropriate to send to the model API.
@@ -79,16 +83,25 @@ an independent certificate. The parent is instructed to preserve these limitatio
 ```bash
 # Create a dedicated workspace yourself. Never point roots at the repo or your entire home.
 export TELEMETRY_ROOTS='["/absolute/path/to/task-workspace"]'
-export TELEMETRY_MODE=verified  # screenshot | flat | graph | verified
+export TELEMETRY_ENABLED=1
+export KNOWLEDGE_GRAPH_ENABLED=1
+export VERIFICATION_ENABLED=0  # optional, requires telemetry; independent of the graph
 export DESKTOP_MAX_TURNS=40     # same budget for all comparison arms
 DESKTOP_CONTROL=1 uv run agent.py "Your desktop task"
 ```
 
 Without roots, UI observations work but file inspection cannot access any files. Root configuration
 must precede process launch. `TELEMETRY_RUN_DIR` optionally chooses the artifact parent; otherwise
-runs live in `screenshots/<random-run-id>/` with `state.sqlite`, screenshots, and `actions.jsonl`.
-The DB contains configuration, input packets, observations, inspections, actions and final claims.
+runs live in `screenshots/<random-run-id>/` with screenshots and `actions.jsonl`. With the graph on,
+`state.sqlite` stores configuration, input packets, observations, inspections, actions and claims.
+With the graph off, an ordinary `events.jsonl` journal records diagnostics; no graph is constructed.
 No screenshot bytes are stored in graph rows. Inspect these artifacts locally; do not commit them.
+
+All flags accept `0`/`1` or `false`/`true`. Explicit flags override legacy `TELEMETRY_MODE` presets:
+`screenshot` = neither, `flat` = telemetry only, `graph` = both without verification, `verified` = both
+with verification. Without explicit settings the legacy verified default is retained. Turning telemetry
+off also defaults verification off; explicitly requesting verification with telemetry off is an error.
+There is no dependency between the telemetry and graph flags.
 
 Collectors use a 5-second command timeout, a 100-node accessibility budget and depth cap, a bounded
 workspace scan (300 files/directories; files up to 1 MB), bounded inspection text, and a 32 KB decision
@@ -114,15 +127,34 @@ The following commands are for the person running the **live** evaluation. They 
 and control the real desktop. Existing fixtures close TextEdit without saving and recreate `~/aos-eval`;
 save personal work first. Keep task apps on the main display. Run modes sequentially, not concurrently.
 
+The harness has four presets with verification **off** in all four:
+
+| `--agent` | Telemetry | Knowledge graph |
+|---|---|---|
+| `base` | off | off |
+| `telemetry-only` | on | off |
+| `knowledge-only` | off | on |
+| `telemetry-knowledge` | on | on |
+
 ```bash
-DESKTOP_CONTROL=1 DESKTOP_MAX_TURNS=40 uv run python evals/desktop/run_desktop.py --agent telemetry-screenshot --category challenge --reps 3 --skip-description
-DESKTOP_CONTROL=1 DESKTOP_MAX_TURNS=40 uv run python evals/desktop/run_desktop.py --agent telemetry-flat --category challenge --reps 3 --skip-description
-DESKTOP_CONTROL=1 DESKTOP_MAX_TURNS=40 uv run python evals/desktop/run_desktop.py --agent telemetry-graph --category challenge --reps 3 --skip-description
-DESKTOP_CONTROL=1 DESKTOP_MAX_TURNS=40 uv run python evals/desktop/run_desktop.py --agent telemetry --category challenge --reps 3 --skip-description
+# Substitute any preset from the table.
+DESKTOP_CONTROL=1 DESKTOP_MAX_TURNS=40 uv run python evals/desktop/run_desktop.py --agent base --category challenge --reps 3 --skip-description
+
+# Equivalent explicit controls on the same base harness:
+DESKTOP_CONTROL=1 uv run python evals/desktop/run_desktop.py --agent base --telemetry --no-knowledge-graph --skip-description
+DESKTOP_CONTROL=1 uv run python evals/desktop/run_desktop.py --agent base --no-telemetry --knowledge-graph --skip-description
 ```
 
+The CLI supports `--telemetry` / `--no-telemetry`, `--knowledge-graph` / `--no-knowledge-graph`, and
+`--verification` / `--no-verification`. CLI overrides take precedence over preset assignments and the
+resolved flags are recorded in each result. Override runs use distinct `-t0-kg1-v0` style folder labels
+and report groups, so changing switches cannot overwrite another combination's results. Ordinary
+reruns of the exact same combination still overwrite its previous task/rep folders.
+
 `--skip-description` skips only the optional paid screenshot-description judge. Artifact graders are
-unchanged. `telemetry-screenshot` is labeled `gui`; enhanced configurations are `gui+telemetry`.
+unchanged. Tracks follow actual telemetry access: `gui` without it, `gui+telemetry` with it. Harness-side
+monitoring/grading still runs for all arms and is never forwarded as operator input. Cross-run memory
+remains disabled in every combination.
 The budget is now 40 operator model turns for **every** mode (previous default was 15). The verified
 mode spends some turns on checks, so report both total turns and GUI action counts, plus time/tokens.
 Do not compare to historical 15-turn results as a controlled ablation.

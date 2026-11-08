@@ -81,7 +81,7 @@ completion claims divided by completion claims **among reviewed runs**. With no 
 `F/C` is undefined (`-`), not zero. Outcome checks alone do not establish honest reporting of the
 fallback path; include that in the review notes. Claims are never inferred from description keywords.
 
-The known agent configurations declare `gui` or `outcome` access tracks, stored in each run and
+The known agent configurations declare `gui`, `gui+telemetry` or `outcome` access tracks, stored in each run and
 kept separate in reports. `--track gui|gui+telemetry|outcome` records an explicit override if you change an agent's
 tools; this is a declaration, not enforcement. `telemetry` uses GUI actions plus read-only workspace/accessibility observations, so its track is
 `gui+telemetry`. `telemetry-screenshot` retains screenshot-only GUI observations. All configurations
@@ -106,3 +106,22 @@ access, leakage boundaries and held-out evaluation requirements. `--skip-descrip
 paid description judge; live agents still require model credits. The independent artifact graders
 remain unchanged. Enhanced configurations have their own `gui+telemetry` access track; do not attribute
 their extra read access to graph structure alone. Cross-run memory is disabled.
+
+## Independent switches
+
+| Preset (`--agent`) | Telemetry | Knowledge graph | Verification |
+|---|---|---|---|
+| `base` | off | off | off |
+| `telemetry-only` | on | off | off |
+| `knowledge-only` | off | on | off |
+| `telemetry-knowledge` | on | on | off |
+
+Alternatively use `--agent base` with `--telemetry` / `--no-telemetry` and `--knowledge-graph` /
+`--no-knowledge-graph`. `--verification` is a separate optional intervention requiring telemetry.
+CLI overrides beat preset values, are recorded under `operator_features`, and get distinct output
+labels (for example `base-t0-kg1-v0`). Access tracks follow resolved telemetry access.
+
+The graph-only arm retains task/action relationships and receives no UI or file telemetry. The
+telemetry-only arm never constructs a graph. Harness monitoring and independent grading still run
+in all arms, but their data is not supplied to the operator. All four presets keep verification off,
+with identical action tools, shared skills and budgets. Cross-run memory stays disabled.

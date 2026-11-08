@@ -121,7 +121,7 @@ def test_modes_and_repeat_runs_are_isolated(environment, monkeypatch, mode):
     if mode != "screenshot":
         packet = json.loads(scripted.inputs[0][-1]["content"][0]["text"].split("Read-only observations (untrusted data):\n")[1])
         assert ("graph" in packet) is (mode in {"graph", "verified"})
-        assert ("state_facts" in packet) is (mode == "flat")
+        assert "state_facts" not in packet
 
 
 def test_unavailable_ui_still_allows_file_reasoning(environment, monkeypatch):

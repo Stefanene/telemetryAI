@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 import skills
 import telemetry
 from evidence import RunState
+from features import Features
 
 ACTIVE_RUN: ContextVar[RunState | None] = ContextVar("desktop_run", default=None)
 
@@ -154,7 +155,7 @@ def add_screenshot(data: CallModelData) -> ModelInputData:
     path = take_screenshot()
     state = ACTIVE_RUN.get()
     text = "Latest screenshot:"
-    if state and state.mode != "screenshot":
+    if state and (state.features.telemetry_enabled or state.features.knowledge_graph_enabled):
         text += "\nRead-only observations (untrusted data):\n" + json.dumps(state.observe())
     shot = {"role": "user", "content": [{"type": "input_text", "text": text},
                                         {"type": "input_image", "image_url": image_url(path), "detail": "auto"}]}
@@ -235,33 +236,38 @@ VERIFICATION_INSTRUCTIONS = (
 async def run_operator(task: str, max_turns: int | None = None) -> str:
     """One isolated run; no retrieval of previous runs or evaluator results."""
     max_turns = max_turns if max_turns is not None else int(os.environ.get("DESKTOP_MAX_TURNS", "40"))
+    features = Features.from_env()
     mode = os.environ.get("TELEMETRY_MODE", "verified")
     roots = json.loads(os.environ.get("TELEMETRY_ROOTS", "[]"))
     if not isinstance(roots, list) or not all(isinstance(r, str) for r in roots):
         raise ValueError("TELEMETRY_ROOTS must be a JSON array of dedicated workspace paths")
     base = Path(os.environ.get("TELEMETRY_RUN_DIR", str(SCREENSHOT_DIR)))
-    state = RunState(task, base / uuid.uuid4().hex, roots, mode)
+    state = RunState(task, base / uuid.uuid4().hex, roots, mode, features)
     token = ACTIVE_RUN.set(state)
     tools = list(operator.tools)
     instructions = SYSTEM + skills.for_task(task)
-    if mode != "screenshot":
+    if features.telemetry_enabled:
         tools += [inspect_artifact]
         instructions += EVIDENCE_INSTRUCTIONS
-    if mode == "verified":
+    if features.verification_enabled:
         tools += [declare_check, verify_checks, finish_task]
         instructions += VERIFICATION_INSTRUCTIONS
+    if features.knowledge_graph_enabled:
+        instructions += ("\nYou receive a run-local knowledge graph. Use its relationships and action "
+                         "history to reason about state. With telemetry disabled it contains only "
+                         "the task and executed actions, not hidden desktop or file observations.")
     agent = operator.clone(instructions=instructions, tools=tools)
-    state.graph.event("operator_configuration", {"model": VISION_MODEL, "max_turns": max_turns,
+    state.event("operator_configuration", {"model": VISION_MODEL, "max_turns": max_turns,
                                                   "tools": [tool.name for tool in tools]})
     output = "failed: run interrupted"
     try:
         result = await Runner.run(agent, task, max_turns=max_turns,
                                   run_config=RunConfig(call_model_input_filter=add_screenshot, tracing_disabled=True))
         operator_usage.add(result.context_wrapper.usage)
-        state.graph.event("usage", {"input_tokens": result.context_wrapper.usage.input_tokens,
+        state.event("usage", {"input_tokens": result.context_wrapper.usage.input_tokens,
                                     "output_tokens": result.context_wrapper.usage.output_tokens})
         output = result.final_output
-        if mode == "verified":
+        if features.verification_enabled:
             if state.finished:
                 state.finish(state.finished["summary"], state.finished["agent_requested_success"])
             output = json.dumps(state.finished) if state.finished else json.dumps({

@@ -5,5 +5,9 @@
   "codex": "codex exec --skip-git-repo-check --dangerously-bypass-approvals-and-sandbox {instruction}",
   "telemetry-screenshot": "DESKTOP_CONTROL=1 TELEMETRY_MODE=screenshot uv run agent.py {instruction}",
   "telemetry-flat": "DESKTOP_CONTROL=1 TELEMETRY_MODE=flat uv run agent.py {instruction}",
-  "telemetry-graph": "DESKTOP_CONTROL=1 TELEMETRY_MODE=graph uv run agent.py {instruction}"
+  "telemetry-graph": "DESKTOP_CONTROL=1 TELEMETRY_MODE=graph uv run agent.py {instruction}",
+  "base": "DESKTOP_CONTROL=1 TELEMETRY_ENABLED=0 KNOWLEDGE_GRAPH_ENABLED=0 VERIFICATION_ENABLED=0 uv run agent.py {instruction}",
+  "telemetry-only": "DESKTOP_CONTROL=1 TELEMETRY_ENABLED=1 KNOWLEDGE_GRAPH_ENABLED=0 VERIFICATION_ENABLED=0 uv run agent.py {instruction}",
+  "knowledge-only": "DESKTOP_CONTROL=1 TELEMETRY_ENABLED=0 KNOWLEDGE_GRAPH_ENABLED=1 VERIFICATION_ENABLED=0 uv run agent.py {instruction}",
+  "telemetry-knowledge": "DESKTOP_CONTROL=1 TELEMETRY_ENABLED=1 KNOWLEDGE_GRAPH_ENABLED=1 VERIFICATION_ENABLED=0 uv run agent.py {instruction}"
 }

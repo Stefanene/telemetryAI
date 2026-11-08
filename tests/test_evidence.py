@@ -245,17 +245,18 @@ def test_inspection_and_packet_sizes_are_bounded(state, workspace, monkeypatch):
     assert len(json.dumps(packet)) < 34000
 
 
-def test_flat_and_graph_expose_the_same_retained_facts(tmp_path, workspace, monkeypatch):
+def test_telemetry_only_has_same_raw_observations_without_building_graph(tmp_path, workspace, monkeypatch):
     monkeypatch.setattr(telemetry, 'snapshot', lambda: {'time': 1, 'windows': [], 'ui': {}})
     (workspace/'item.txt').write_text('same information')
     flat = RunState('Inspect item.txt.', tmp_path/'flat', [workspace], 'flat')
     graph = RunState('Inspect item.txt.', tmp_path/'graph', [workspace], 'graph')
     try:
         f, g = flat.observe(), graph.observe()
-        assert f['workspace'] == g['workspace']
-        relations = [(r['subject']['id'], r['predicate'], r['object']['id'], r['status']) for r in f['state_facts']]
-        assert relations == [(r['source'], r['relation'], r['target'], r['status']) for r in g['graph']['relations']]
-        assert 'graph' not in f and 'state_facts' not in g
+        assert f['workspace'] == g['workspace'] and f['ui'] == g['ui']
+        assert f['changes'] == g['changes']
+        assert flat.graph is None
+        assert not (flat.directory/'state.sqlite').exists()
+        assert 'graph' not in f and 'graph' in g
     finally:
         flat.close('test')
         graph.close('test')

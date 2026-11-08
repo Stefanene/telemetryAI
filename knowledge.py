@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS events(seq INTEGER PRIMARY KEY, kind TEXT, data TEXT,
     @synchronized
     def context(self, limit=60) -> dict:
         rows = self.db.execute('''SELECT source,relation,target,status,observed_at FROM edges
-WHERE status != 'stale' AND relation IN ('current_version','frontmost','visible_window','possibly_moved_to')
+WHERE status != 'stale' AND relation IN ('current_version','frontmost','visible_window','possibly_moved_to','performed','followed_by')
 ORDER BY observed_at DESC LIMIT ?''', (limit,)).fetchall()
         ids = {v for r in rows for v in (r[0], r[2])}
         nodes = []
