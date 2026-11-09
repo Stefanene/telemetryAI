@@ -39,7 +39,10 @@ class RunState:
         self.finished = None
         self.last_packet = None
         self.event('configuration', {'mode': mode, **self.features.as_dict(), 'roots': [str(r) for r in self.workspace.roots],
-                                          'task': task, 'memory': 'disabled'})
+                                          'task': task, 'memory': 'disabled',
+                                          'graph_visualization': {'mode': self.graph.visualizations.mode,
+                                                                  'keep': self.graph.visualizations.keep}
+                                          if self.graph is not None else {'mode': 'off'}})
 
     @synchronized
     def event(self, kind, data):
@@ -72,6 +75,7 @@ class RunState:
         for check in self.checks:
             if check['path'] in changed_paths or not manifest['complete']:
                 check.update(status='unknown', reason='Workspace changed or scan is incomplete; verify again')
+                self.sync_goal(check)
         observation = (self.graph.observe(ui, manifest, changes) if self.graph is not None
                        else self.event('observation', {'ui': ui, 'manifest': manifest, 'changes': changes}))
         packet = {'observation_id': observation, 'workspace_roots': [str(r) for r in self.workspace.roots], 'ui': ui, 'workspace': manifest, 'changes': changes,
@@ -101,6 +105,7 @@ class RunState:
             inspection['status'] = 'stale'
         for check in self.checks:
             check.update(status='unknown', reason='Action occurred since verification')
+            self.sync_goal(check)
         if self.graph is not None:
             self.graph.record_action(tool, args, result)
         else:
@@ -152,7 +157,12 @@ class RunState:
         if self.graph is not None:
             goal = self.graph.node(f'{self.graph.run_id}:{check["id"]}', 'GoalCondition', check)
             self.graph.edge(self.graph.run_id, 'requires', goal, 'inferred')
+            self.graph.checkpoint('declared check')
         return check
+
+    def sync_goal(self, check):
+        if self.graph is not None:
+            self.graph.node(f'{self.graph.run_id}:{check["id"]}', 'GoalCondition', check)
 
     @synchronized
     def verify(self):
@@ -160,6 +170,7 @@ class RunState:
             raise ValueError('Verification requires enabled telemetry and verification')
         # Fresh reads every time: neither graph cache nor earlier tool output proves current state.
         for check in self.checks:
+            check.pop('evidence_id', None)
             try:
                 kind, path = check['kind'], check['path']
                 view = 'pdf' if kind in {'page_count', 'pdf_text_contains'} else 'rich_text' if kind == 'formatting_preserved' else 'text' if kind.startswith('text_') else 'metadata'
@@ -203,6 +214,9 @@ class RunState:
                     self.graph.edge(goal, 'evaluated_using', check['evidence_id'])
             except Exception as exc:
                 check.update(status='unknown', reason=f'{type(exc).__name__}: {exc}'[:250], revision=self.revision)
+            self.sync_goal(check)
+        if self.graph is not None:
+            self.graph.checkpoint('verification')
         result = {'checks': telemetry.bounded(self.checks), 'all_declared_checks_pass': bool(self.checks) and all(c['status'] == 'pass' for c in self.checks),
                   'scope': 'Only model-declared conditions; not an independent grade or proof that every user requirement was covered.'}
         self.event('verification', result)

@@ -109,6 +109,48 @@ packet cap. Incomplete scans and truncated packets are labeled. Missing data is 
 absence. Large or non-UTF-8 text needs another inspection strategy. `system_snapshot` and `recent_logs`
 are optional local diagnostics, not routine model inputs or agent tools.
 
+## Saved graph visualizations
+
+Graph-enabled runs save diagnostic images under `<run-directory>/graph_snapshots/`. These are
+exports of the stored graph, not agent inputs, graders or extra observations. Graph-off runs do not
+construct a graph or generate graph images.
+
+- `latest.svg`: dependency-free, scalable image of the most recent exported graph.
+- `latest.png`: the same diagram as a raster image when the optional `graph-viz` extra is installed.
+- `latest.json`: complete stored nodes and edges, including historical/stale relationships.
+- Numbered `.svg`, `.png` and `.json` files: retained snapshot history.
+
+Images label node kinds and relationship names. Inferred relations are dashed amber; stale edges
+are hidden in the image but retained in JSON/SQLite. The image is a compact view (up to 25 nodes,
+5 per category, and 40 edges) and explicitly reports displayed/total counts. It is not a complete
+rendering of a large graph. Long labels are shortened, typed document contents are omitted from
+image labels, and paths show their last two components. The full JSON contains the same redacted,
+bounded data held in SQLite, which can still contain private workspace information; keep it local.
+
+```bash
+uv sync --extra desktop-eval --extra graph-viz --group dev  # adds PNG support
+export GRAPH_VISUALIZATION=updates  # default; alternatives: final or off
+export GRAPH_SNAPSHOT_KEEP=20        # default; retain 1..200 snapshots, plus latest
+```
+
+`updates` exports after complete observations, actions, inspections, declared checks and verification,
+plus initialization and close. Low-level node/edge SQL writes are grouped into these logical updates;
+a caller making raw Graph mutations can call `graph.checkpoint("reason")` explicitly. `final` saves
+only when the graph closes; `off` disables rendering/export entirely. A run killed without cleanup
+may lack a final image; updates mode preserves earlier snapshots. The snapshot limit removes old
+numbered images/JSON, not the SQLite history. Visualization settings are recorded with run configuration.
+
+Rendering errors are reported diagnostically and do not turn a successful action into an agent error.
+SVG output needs no optional packages. PNG is omitted when Pillow is unavailable. Rendering adds time
+and storage overhead; set `GRAPH_VISUALIZATION=off` consistently when measuring agent latency without
+diagnostic rendering, or report the enabled setting. There are no model calls for visualization.
+
+Existing run databases can also be rendered offline without modifying them:
+
+```bash
+uv run python graph_visualizer.py /absolute/path/to/run/state.sqlite --output /absolute/path/to/export
+```
+
 ## Handoff to the evaluation runner
 
 Install dependencies and run offline checks first:

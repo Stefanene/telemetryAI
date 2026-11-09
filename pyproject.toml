@@ -9,6 +9,7 @@ dependencies = [
 
 [project.optional-dependencies]
 desktop-eval = ["pypdf"]
+graph-viz = ["Pillow>=10.1"]
 # Live graph storage uses the standard-library sqlite3 module.
 
 [dependency-groups]

@@ -104,3 +104,11 @@ construct or query a graph. Resolved switches are recorded and CLI variants get 
 See [the implementation, fairness boundaries and evaluation handoff](docs/knowledge-telemetry.md)
 for configuration, comparisons, limitations and commands. No live performance improvement has yet
 been measured. Offline tests block network access and use scripted models instead of paid API calls.
+
+## Graph snapshots
+
+Graph-enabled runs save SVG snapshots in `screenshots/<run-id>/graph_snapshots/`, with the latest
+view in `latest.svg` and complete graph data in `latest.json`. Install `uv sync --extra graph-viz`
+for `latest.png` too. By default, snapshots follow logical graph updates and keep the latest 20;
+set `GRAPH_VISUALIZATION=final|off` or `GRAPH_SNAPSHOT_KEEP` to change this. Graph-off runs produce
+no graph images. See the handoff document for offline export, limits and benchmark timing guidance.

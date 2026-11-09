@@ -6,6 +6,8 @@ Relations say 'observed after', not 'caused by'. A path is not a document identi
 from __future__ import annotations
 
 import json
+import os
+import logging
 from functools import wraps
 from threading import RLock
 import sqlite3
@@ -13,6 +15,7 @@ import time
 from pathlib import Path
 
 import telemetry
+from graph_visualizer import Snapshots, read_graph
 
 GRAPH_DIR = Path(__file__).parent / 'knowledge'
 
@@ -31,6 +34,10 @@ class Graph:
         self.lock = RLock()
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.run_id = run_id
+        self.visualizations = Snapshots(path.parent / "graph_snapshots",
+                                        os.environ.get("GRAPH_VISUALIZATION", "updates"),
+                                        int(os.environ.get("GRAPH_SNAPSHOT_KEEP", "20")))
+        self.dirty = False
         self.db.executescript('''
 CREATE TABLE IF NOT EXISTS nodes(id TEXT PRIMARY KEY, kind TEXT, data TEXT);
 CREATE TABLE IF NOT EXISTS edges(source TEXT, relation TEXT, target TEXT,
@@ -39,12 +46,14 @@ CREATE TABLE IF NOT EXISTS events(seq INTEGER PRIMARY KEY, kind TEXT, data TEXT,
 ''')
         self.previous_action = None
         self.node(run_id, 'Run', {'started': time.time()})
+        self.checkpoint('initialized')
 
     @synchronized
     def node(self, id: str, kind: str, data: dict):
         self.db.execute('INSERT OR REPLACE INTO nodes VALUES(?,?,?)',
                         (id, kind, json.dumps(telemetry.bounded(data))))
         self.db.commit()
+        self.dirty = True
         return id
 
     @synchronized
@@ -52,6 +61,7 @@ CREATE TABLE IF NOT EXISTS events(seq INTEGER PRIMARY KEY, kind TEXT, data TEXT,
         self.db.execute('INSERT OR REPLACE INTO edges VALUES(?,?,?,?,?)',
                         (source, relation, target, status, time.time()))
         self.db.commit()
+        self.dirty = True
 
     @synchronized
     def event(self, kind: str, data: dict) -> str:
@@ -71,6 +81,7 @@ CREATE TABLE IF NOT EXISTS events(seq INTEGER PRIMARY KEY, kind TEXT, data TEXT,
         # All earlier state observations become historical, not current evidence.
         self.db.execute("UPDATE edges SET status='stale' WHERE relation IN ('current_version','frontmost','visible_window')")
         self.db.commit()
+        self.checkpoint('action')
         return id
 
     @synchronized
@@ -106,6 +117,7 @@ CREATE TABLE IF NOT EXISTS events(seq INTEGER PRIMARY KEY, kind TEXT, data TEXT,
                 if (old['device'], old['inode'], old['sha256']) == (new['device'], new['inode'], new['sha256']):
                     self.edge(f'path:{a["path"]}', 'possibly_moved_to', f'path:{b["path"]}', 'inferred')
         self.db.commit()
+        self.checkpoint('observation')
         return id
 
     @synchronized
@@ -113,6 +125,7 @@ CREATE TABLE IF NOT EXISTS events(seq INTEGER PRIMARY KEY, kind TEXT, data TEXT,
         id = self.event('inspection', {'kind': kind, 'result': result})
         self.node(id, 'Inspection', {'kind': kind, 'result': result})
         self.edge(self.run_id, 'observed', id)
+        self.checkpoint('inspection')
         return id
 
     @synchronized
@@ -134,7 +147,20 @@ ORDER BY observed_at DESC LIMIT ?''', (limit,)).fetchall()
                 'note': 'Observed relationships only; possible moves are inferred. No basename establishes document identity.'}
 
     @synchronized
+    def checkpoint(self, reason: str, final=False):
+        """Visualization failures must not change agent decisions or independent grading."""
+        if self.visualizations.mode == 'off' or not (self.dirty or final):
+            return
+        try:
+            self.visualizations.save(read_graph(self.db), reason, final=final)
+            self.dirty = False
+        except Exception as exc:
+            self.event('visualization_error', {'error': type(exc).__name__, 'reason': reason})
+            logging.getLogger(__name__).warning('Graph visualization failed: %s', type(exc).__name__)
+
+    @synchronized
     def close(self):
+        self.checkpoint('final', final=True)
         self.db.close()
 
 
