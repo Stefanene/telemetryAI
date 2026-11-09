@@ -65,7 +65,7 @@ A skill applies when one of its `triggers` appears as a word in the task (`trigg
 
 ## Evaluating desktop tasks
 
-`evals/desktop/` runs 15 macOS tasks (9 sanity checks, 6 challenges) against the agent, grades each by the state it leaves in `~/aos-eval`, and has a judge model describe the recorded screen. See [evals/desktop/README.md](evals/desktop/README.md).
+`evals/desktop/` runs 15 macOS tasks (9 sanity checks, 6 challenges) against the agent, grades each by the state it leaves in `~/telem-eval`, and has a judge model describe the recorded screen. See [evals/desktop/README.md](evals/desktop/README.md).
 
 ```bash
 DESKTOP_CONTROL=1 uv run python evals/desktop/run_desktop.py --only calculator new_folder

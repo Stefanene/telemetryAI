@@ -34,7 +34,7 @@ else:
 
 HERE = Path(__file__).parent
 RUNS = HERE / "runs"
-SANDBOX = Path.home() / "aos-eval"
+SANDBOX = Path.home() / "telem-eval"
 QUESTION = "These screenshots were taken every 2 seconds while someone used this Mac. Describe step by step what they did."
 OPERATOR_AGENTS = {"base", "telemetry-only", "knowledge-only", "telemetry-knowledge",
                    "telemetry", "telemetry-screenshot", "telemetry-flat", "telemetry-graph"}
@@ -249,7 +249,7 @@ def main() -> None:
         return report()
 
     if os.environ.get("DESKTOP_CONTROL") != "1":
-        raise SystemExit("This drives the real desktop (and deletes ~/aos-eval). Set DESKTOP_CONTROL=1 to go ahead.")
+        raise SystemExit("This drives the real desktop (and deletes ~/telem-eval). Set DESKTOP_CONTROL=1 to go ahead.")
     for task_id in selected:
         for rep in range(1, args.reps + 1):
             run_dir = RUNS / label / f"{task_id}-{rep}"

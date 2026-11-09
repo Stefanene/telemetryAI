@@ -166,7 +166,7 @@ No API key, paid model call or live GUI action is needed by tests. This validate
 live-agent success, correct planning, accessibility availability, or performance improvement.
 
 The following commands are for the person running the **live** evaluation. They use paid agent calls
-and control the real desktop. Existing fixtures close TextEdit without saving and recreate `~/aos-eval`;
+and control the real desktop. Existing fixtures close TextEdit without saving and recreate `~/telem-eval`;
 save personal work first. Keep task apps on the main display. Run modes sequentially, not concurrently.
 
 The harness has four presets with verification **off** in all four:

@@ -12,7 +12,7 @@ from io import BytesIO
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-EXACT = "AOS desktop evaluation\nStatus: ready\nReference: 42\n"
+EXACT = "TelemetryAI desktop evaluation\nStatus: ready\nReference: 42\n"
 OLD = "Weekly report\nStatus: draft\nTotal: 100\n"
 UPDATED = "Weekly report\nStatus: approved\nTotal: 125\n"
 TARGET = "Project: Orion\nStatus: draft\n"
@@ -20,8 +20,8 @@ TARGET_UPDATED = "Project: Orion\nStatus: approved\n"
 DECOY = "Project: Vega\nStatus: draft\n"
 MOVED = "Meeting notes\nDecision: proceed\n"
 MOVED_UPDATED = MOVED + "Owner: Ryan\n"
-PDF_TEXT = "GraphOS export validation\nReference: AOS-PDF-7391\nStatus: approved"
-FALLBACK = "Recovery report\nReference: AOS-RECOVERY-82\n"
+PDF_TEXT = "GraphOS export validation\nReference: Telem-PDF-7391\nStatus: approved"
+FALLBACK = "Recovery report\nReference: Telem-RECOVERY-82\n"
 
 
 def rich_document(budget="1000") -> bytes:

@@ -1,6 +1,6 @@
 # Desktop task eval
 
-Fifteen macOS tasks (`tasks.json`) graded by the state they leave in `~/aos-eval` (deleted and
+Fifteen macOS tasks (`tasks.json`) graded by the state they leave in `~/telem-eval` (deleted and
 recreated before every run). **Nine are sanity checks; six are challenge tests.** Categories are
 explicit in the task definitions, printed during runs, and reported separately. Difficulty labels
 describe the intended role of each case, not measured agent performance.
