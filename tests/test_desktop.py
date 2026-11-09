@@ -42,6 +42,9 @@ class FakeModel(Model):
 @pytest.fixture(autouse=True)
 def offline(monkeypatch, tmp_path):
     """Screenshots are tiny files in tmp_path, the log goes there too, and nothing waits on the UI."""
+    monkeypatch.setenv("TELEMETRY_MODE", "screenshot")
+    monkeypatch.delenv("TELEMETRY_RUN_DIR", raising=False)
+    monkeypatch.setenv("TELEMETRY_ROOTS", "[]")
     monkeypatch.setattr(desktop, "SCREENSHOT_DIR", tmp_path)
     monkeypatch.setattr(desktop.time, "sleep", lambda seconds: None)
 
@@ -59,7 +62,9 @@ def use_model(monkeypatch, turns):
 
 
 def records(tmp_path):
-    return [json.loads(line) for line in (tmp_path / "actions.jsonl").read_text().splitlines()]
+    paths = list(tmp_path.glob("*/actions.jsonl"))
+    assert len(paths) == 1
+    return [json.loads(line) for line in paths[0].read_text().splitlines()]
 
 
 def tool_outputs(model_input):

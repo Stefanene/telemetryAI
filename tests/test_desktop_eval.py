@@ -31,7 +31,7 @@ def test_runner_grades_outcomes_not_agent_claims(tmp_path, monkeypatch, agent_re
     row = runner.run_task("telemetry", "agent-command {instruction}", task, run_dir, 1)
     assert row["pass"] is (agent_result == "success")
     assert row["claimed_success"] is None  # narrative is not an annotation
-    assert row["category"] == "sanity" and row["track"] == "gui"
+    assert row["category"] == "sanity" and row["track"] == "gui+telemetry"
     assert (run_dir / "agent_output.txt").exists()
     if agent_result == "timeout":
         assert row["exit_code"] is None
@@ -78,3 +78,21 @@ def test_report_separates_tracks_categories_and_claim_denominators(tmp_path, mon
             ("telemetry", "gui", "challenge"), ("codex", "outcome", "challenge")}
     assert next(line for line in totals if line[2] == "sanity")[-1] == "100%"
     assert all(line[-1] == "-" for line in totals if line[2] == "challenge")
+
+
+def test_skip_description_never_initializes_paid_judge(tmp_path, monkeypatch):
+    monkeypatch.setenv('DESKTOP_CONTROL', '1')
+    monkeypatch.setattr(runner, 'RUNS', tmp_path)
+    monkeypatch.setattr(runner.sys, 'argv', ['run_desktop.py', '--only', 'new_folder', '--skip-description'])
+    def denied(*args, **kwargs):
+        raise AssertionError('Paid description judge must not be initialized or called')
+    monkeypatch.setattr(runner, 'OpenAI', denied)
+    monkeypatch.setattr(runner, 'grade_description', denied)
+    def run(*args):
+        run_dir = args[3]
+        run_dir.mkdir(parents=True)
+        return {'pass': True, 'seconds': 0, 'cost_usd': None}
+    monkeypatch.setattr(runner, 'run_task', run)
+    monkeypatch.setattr(runner, 'report', lambda: None)
+    runner.main()
+    assert json.loads((tmp_path/'telemetry/new_folder-1/run.json').read_text())['describe_score'] is None

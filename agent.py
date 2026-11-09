@@ -52,7 +52,9 @@ agent = Agent(
         "- Do not call it for questions that do not involve the screen: math, general knowledge, or "
         "recalling what was said earlier in this conversation.\n"
         "- To do something in a desktop app (open, click, type, save, rename...), call operate_desktop "
-        "with a self-contained task, then report its summary and any answer it found.\n"
+        "with a self-contained task, then report its summary and any answer it found. Preserve its "
+        "verification status: never turn unverified_or_incomplete into a success claim. "
+        "declared_checks_passed certifies only the listed checks, not complete task coverage.\n"
         "- Never repeat passwords, keys, or other secrets you see on screen.\n"
         "Examples:\n"
         "  'What app am I using?' -> call look_at_screen.\n"
@@ -63,7 +65,6 @@ agent = Agent(
     ),
     model=model,
     # operate_desktop drives the real mouse and keyboard, so it is opt-in.
-    # TODO(telemetry, knowledge): + telemetry.TELEMETRY_TOOLS + [a `recall` tool over knowledge.query]
     tools=[look_at_screen] + ([operate_desktop] if os.environ.get("DESKTOP_CONTROL") == "1" else []),
 )
 

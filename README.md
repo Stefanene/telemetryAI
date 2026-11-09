@@ -40,7 +40,7 @@ The agent decides from its system prompt when it needs to see your screen: it ta
 
 ## Desktop control
 
-With `DESKTOP_CONTROL=1` the agent also gets `operate_desktop`. That tool hands a task to a desktop operator (`desktop.py`), which sees a fresh 1280-px screenshot before every step and clicks, types and presses keys until the task is done. It drives your real mouse and keyboard, so it's off by default. Every action is logged to `screenshots/actions.jsonl`. If clicks land off target, set `DESKTOP_SCALE` (screen points per screenshot pixel).
+With `DESKTOP_CONTROL=1` the agent also gets `operate_desktop`. That tool hands a task to a desktop operator (`desktop.py`), which sees a fresh 1280-px screenshot before every step and clicks, types and presses keys until the task is done. It drives your real mouse and keyboard, so it's off by default. Each operator run has its own `screenshots/<run-id>/actions.jsonl` and SQLite evidence graph. If clicks land off target, set `DESKTOP_SCALE` (screen points per screenshot pixel).
 
 ```bash
 DESKTOP_CONTROL=1 uv run agent.py                                  # chat, with desktop control
@@ -78,15 +78,37 @@ Offline tests (graders, eval harness, desktop operator; no GUI, screenshots or A
 uv sync --extra desktop-eval --group dev && uv run pytest -q
 ```
 
-## Planned: knowledge graph and telemetry
+## Knowledge graph and telemetry
 
-Placeholders for the next layer, not implemented yet:
+The operator now receives bounded front-app, window, accessibility and workspace observations,
+with a run-local SQLite evidence graph. It can inspect artifacts and check model-declared requirements
+against fresh file evidence. Checks are not independent task grades; cross-run memory is disabled.
 
-- `telemetry.py`: read-only macOS collectors (front app, windows, accessibility tree, system stats, logs, sandbox file events) to inform the agent's decisions and enrich eval runs.
-- `knowledge.py`: a knowledge graph of tasks, runs, apps, files, UI elements, actions and graded outcomes (backend to be chosen, e.g. graphify), for recall and decision/task evaluation. Stored in `knowledge/` (gitignored).
+Configure explicit workspace roots with `TELEMETRY_ROOTS` (JSON array of absolute directory paths).
+Without roots, no file inspection is allowed. `TELEMETRY_ENABLED=0|1` and
+`KNOWLEDGE_GRAPH_ENABLED=0|1` independently control the two capabilities. `VERIFICATION_ENABLED=0|1`
+controls optional file checks (requires telemetry, works without the graph). Legacy `TELEMETRY_MODE`
+presets still work; explicit flags win. All configurations use `DESKTOP_MAX_TURNS=40` by default.
 
-Every place they plug in is marked:
+The harness presets `base`, `telemetry-only`, `knowledge-only` and `telemetry-knowledge` cover all four
+combinations with verification off. You can also override each capability directly:
 
 ```bash
-grep -rn "TODO(knowledge\|TODO(telemetry" agent.py desktop.py evals/desktop/run_desktop.py pyproject.toml
+DESKTOP_CONTROL=1 uv run python evals/desktop/run_desktop.py --agent base --telemetry --no-knowledge-graph --skip-description
+DESKTOP_CONTROL=1 uv run python evals/desktop/run_desktop.py --agent base --no-telemetry --knowledge-graph --skip-description
 ```
+
+Graph-only organizes task/action history without reading UI/file telemetry. Graph-off runs do not
+construct or query a graph. Resolved switches are recorded and CLI variants get separate result folders.
+
+See [the implementation, fairness boundaries and evaluation handoff](docs/knowledge-telemetry.md)
+for configuration, comparisons, limitations and commands. No live performance improvement has yet
+been measured. Offline tests block network access and use scripted models instead of paid API calls.
+
+## Graph snapshots
+
+Graph-enabled runs save SVG snapshots in `screenshots/<run-id>/graph_snapshots/`, with the latest
+view in `latest.svg` and complete graph data in `latest.json`. Install `uv sync --extra graph-viz`
+for `latest.png` too. By default, snapshots follow logical graph updates and keep the latest 20;
+set `GRAPH_VISUALIZATION=final|off` or `GRAPH_SNAPSHOT_KEEP` to change this. Graph-off runs produce
+no graph images. See the handoff document for offline export, limits and benchmark timing guidance.

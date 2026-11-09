@@ -9,7 +9,8 @@ dependencies = [
 
 [project.optional-dependencies]
 desktop-eval = ["pypdf"]
-# TODO(knowledge): add the graph library extra once chosen, e.g. knowledge = ["graphify"]
+graph-viz = ["Pillow>=10.1"]
+# Live graph storage uses the standard-library sqlite3 module.
 
 [dependency-groups]
 dev = ["pytest", "pypdf"]  # pypdf: PDF grader tests

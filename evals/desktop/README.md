@@ -81,10 +81,11 @@ completion claims divided by completion claims **among reviewed runs**. With no 
 `F/C` is undefined (`-`), not zero. Outcome checks alone do not establish honest reporting of the
 fallback path; include that in the review notes. Claims are never inferred from description keywords.
 
-The known agent configurations declare `gui` or `outcome` access tracks, stored in each run and
-kept separate in reports. `--track gui|outcome` records an explicit override if you change an agent's
-tools; this is a declaration, not enforcement. `telemetry` has no shell, so it's on the GUI track; its
-desktop operator has a 15-step budget (`desktop.run_operator`). Record model/settings and budgets when
+The known agent configurations declare `gui`, `gui+telemetry` or `outcome` access tracks, stored in each run and
+kept separate in reports. `--track gui|gui+telemetry|outcome` records an explicit override if you change an agent's
+tools; this is a declaration, not enforcement. `telemetry` uses GUI actions plus read-only workspace/accessibility observations, so its track is
+`gui+telemetry`. `telemetry-screenshot` retains screenshot-only GUI observations. All configurations
+now default to 40 operator model turns (`DESKTOP_MAX_TURNS`, including inspection/check calls). Record model/settings and budgets when
 comparing runs; challenge cases may exhaust that budget.
 
 Offline validation (no screenshots, GUI actions, models, or API keys):
@@ -97,3 +98,30 @@ RTF conversion cases need macOS `textutil` and are skipped elsewhere; install th
 extra to run PDF cases. Desktop operator regressions (`tests/test_desktop.py`, scripted model) cover
 action errors and recovery, invalid key combos, turn-limit failure, and screenshot failure. Harness tests
 check independent scoring, timeout output, permission cleanup, access tracks, and claim denominators.
+
+## Telemetry and graph comparisons
+
+See [the evaluation handoff](../../docs/knowledge-telemetry.md) for all four configurations, observation
+access, leakage boundaries and held-out evaluation requirements. `--skip-description` avoids the optional
+paid description judge; live agents still require model credits. The independent artifact graders
+remain unchanged. Enhanced configurations have their own `gui+telemetry` access track; do not attribute
+their extra read access to graph structure alone. Cross-run memory is disabled.
+
+## Independent switches
+
+| Preset (`--agent`) | Telemetry | Knowledge graph | Verification |
+|---|---|---|---|
+| `base` | off | off | off |
+| `telemetry-only` | on | off | off |
+| `knowledge-only` | off | on | off |
+| `telemetry-knowledge` | on | on | off |
+
+Alternatively use `--agent base` with `--telemetry` / `--no-telemetry` and `--knowledge-graph` /
+`--no-knowledge-graph`. `--verification` is a separate optional intervention requiring telemetry.
+CLI overrides beat preset values, are recorded under `operator_features`, and get distinct output
+labels (for example `base-t0-kg1-v0`). Access tracks follow resolved telemetry access.
+
+The graph-only arm retains task/action relationships and receives no UI or file telemetry. The
+telemetry-only arm never constructs a graph. Harness monitoring and independent grading still run
+in all arms, but their data is not supplied to the operator. All four presets keep verification off,
+with identical action tools, shared skills and budgets. Cross-run memory stays disabled.
