@@ -1,7 +1,7 @@
 # Desktop task eval
 
-Fifteen macOS tasks (`tasks.json`) graded by the state they leave in `~/telem-eval` (deleted and
-recreated before every run). **Nine are sanity checks; six are challenge tests.** Categories are
+Twenty-one macOS tasks (`tasks.json`) graded by the state they leave in `~/telem-eval` (deleted and
+recreated before every run). **Nine are sanity checks, six are challenge tests and six are final (vision) tests.** Categories are
 explicit in the task definitions, printed during runs, and reported separately. Difficulty labels
 describe the intended role of each case, not measured agent performance.
 
@@ -50,6 +50,18 @@ they share the desktop and sandbox. Run as a normal user, not root, so permissio
 | `move_with_stale_editor` | **CHALLENGE** | An archived copy starts open in TextEdit. Move the incoming document, edit its destination, preserve the archive, and leave no source file behind. |
 | `pdf_export` | **CHALLENGE** | Valid, one-page PDF at the exact path containing all source text; preserve the source. |
 | `blocked_destination` | **CHALLENGE** | Use the explicitly permitted fallback after a blocked save; preserve protected contents and permissions. |
+| `duck_images` | **FINAL** (placeholder) | Safari ends on a duck image search and the agent reports the third image. The image changes over time, so the check only confirms the search page and a non-empty answer; judge the answer by hand (frames + `claim_review.json`). |
+| `image_code` | **FINAL** | Report a random six-character code drawn with rotation and noise. |
+| `shape_count` | **FINAL** | Report how many red circles are in a random 4×4 grid of shapes. |
+| `clock_time` | **FINAL** | Report the time on an analog clock (random, 5-minute steps) as H:MM. |
+| `transcribe_image` | **FINAL** | Save the sentence shown in the image to `transcript.txt` in TextEdit, exact bytes. |
+| `circled_file` | **FINAL** | Move only the file circled in red in the image from `inbox/` to `chosen/`. |
+
+Final tasks need the screen. Setup (`vision.py`) renders a random image with Pillow outside the sandbox,
+opens it in Preview, then deletes the file. The answer is kept only in the runner's memory until grading.
+Answer tasks are graded on the `result` of the agent's last JSON line, so token counts can't match by accident.
+Claude Code could still run `screencapture` and read the PNG; check `agent_output.txt` for that and note it in
+`claim_review.json`. Preview is quit before and after each run.
 
 New fixtures and graders live in `reliability.py`. Grading uses exact bytes for plain text, `pypdf`
 for PDF structure/text, and macOS `textutil` conversion to DOCX for semantic bold/italic run checks.

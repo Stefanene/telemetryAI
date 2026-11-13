@@ -7,10 +7,14 @@ be disabled for offline tests. All task data stays in the supplied sandbox.
 import json
 import stat
 import subprocess
+import sys
 import zipfile
 from io import BytesIO
 from pathlib import Path
 from xml.etree import ElementTree as ET
+
+sys.path.insert(0, str(Path(__file__).parent))  # sibling import also works when tests load this file by path
+import vision  # noqa: E402
 
 EXACT = "TelemetryAI desktop evaluation\nStatus: ready\nReference: 42\n"
 OLD = "Weekly report\nStatus: draft\nTotal: 100\n"
@@ -63,6 +67,8 @@ def setup_task(task_id: str, root: Path, *, open_apps=True) -> None:
         (root / "fallback").mkdir()
         (root / "protected/keep.txt").chmod(0o444)
         (root / "protected").chmod(0o555)
+    elif task_id in vision.TASKS:
+        vision.setup(task_id, root, open_apps)
     else:
         raise ValueError(f"unknown reliability task: {task_id}")
     if open_apps:
@@ -76,6 +82,8 @@ def setup_task(task_id: str, root: Path, *, open_apps=True) -> None:
 
 
 def cleanup_task(task_id: str, root: Path) -> None:
+    if task_id in vision.TASKS:
+        vision.cleanup()
     if task_id == "blocked_destination" and (root / "protected").is_dir():
         (root / "protected").chmod(0o755)
         if (root / "protected/keep.txt").is_file():
@@ -111,21 +119,23 @@ def _rich_runs(path):
     return paragraphs
 
 
-def grade_task(task_id: str, root: Path) -> tuple[bool, str]:
+def grade_task(task_id: str, root: Path, output: str = "") -> tuple[bool, str]:
     """Return pass + a diagnostic, independent of the agent's claimed success."""
     try:
-        passed = _grade(task_id, root)
+        passed = _grade(task_id, root, output)
     except ImportError as exc:
         # A missing grader dependency is an infrastructure error, not an agent failure.
-        raise RuntimeError("PDF grading requires uv sync --extra desktop-eval --group dev") from exc
+        raise RuntimeError("Grading requires uv sync --extra desktop-eval --group dev") from exc
     except (OSError, ValueError, KeyError, subprocess.SubprocessError, zipfile.BadZipFile, ET.ParseError) as exc:
         return False, f"Invalid or unreadable artifact: {type(exc).__name__}: {exc}"
     return passed, "All required outcomes verified." if passed else "Output or preservation checks failed."
 
 
-def _grade(task_id, root):
+def _grade(task_id, root, output=""):
     if not _matches(root, "unrelated.txt", "Keep this file unchanged.\n"):
         return False
+    if task_id in vision.TASKS:
+        return vision.grade(task_id, root, output)
     if task_id == "exact_save":
         return _matches(root, "final.txt", EXACT) and _matches(root, "final-old.txt", "Do not edit this draft.\n")
     if task_id == "preserve_formatting":

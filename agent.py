@@ -14,6 +14,7 @@ load_dotenv()
 if not os.environ.get("OPENAI_API_KEY"):
     raise ValueError("Please set OPENAI_API_KEY in .env.")
 model = os.environ.get("MODEL", "gpt-6-luna")
+PRICES = {"gpt-6-luna": (0.10, 0.50)}  # USD per 1M input / output tokens
 
 # Tracing uploads runs to OpenAI's dashboard; keep screen contents local.
 set_tracing_disabled(True)
@@ -74,7 +75,9 @@ if __name__ == "__main__" and len(sys.argv) > 1:  # one task, one JSON line (eva
     result = Runner.run_sync(agent, " ".join(sys.argv[1:]), max_turns=20)
     usage = result.context_wrapper.usage
     usage.add(operator_usage)
-    print(json.dumps({"result": result.final_output, "total_cost_usd": None,  # ponytail: tokens only; multiply by your model's price for USD
+    price = PRICES.get(model) if model == vision_model else None  # usage sums both models; one price only fits if they match
+    cost = round((usage.input_tokens * price[0] + usage.output_tokens * price[1]) / 1e6, 6) if price else None
+    print(json.dumps({"result": result.final_output, "total_cost_usd": cost,
                       "input_tokens": usage.input_tokens, "output_tokens": usage.output_tokens}))
 elif __name__ == "__main__":
     print(f"Desktop assistant ({model}, vision: {vision_model}). Empty line to quit.")

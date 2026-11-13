@@ -8,12 +8,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-desktop-eval = ["pypdf"]
+desktop-eval = ["pypdf", "Pillow>=10.1"]  # Pillow: final-category task images
 graph-viz = ["Pillow>=10.1"]
 # Live graph storage uses the standard-library sqlite3 module.
 
 [dependency-groups]
-dev = ["pytest", "pypdf"]  # pypdf: PDF grader tests
+dev = ["pytest", "pypdf", "Pillow>=10.1"]  # pypdf: PDF grader tests; Pillow: vision task tests
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

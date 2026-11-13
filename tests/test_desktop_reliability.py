@@ -193,7 +193,7 @@ def test_completion_claims_are_reviewed_independently(tmp_path):
 def test_task_categories_explicitly_identify_sanity_checks():
     tasks = json.loads((Path(__file__).parents[1] / "evals/desktop/tasks.json").read_text())
     assert len({t["id"] for t in tasks}) == len(tasks)
-    new = {t["id"]: t for t in tasks if "fixture" in t}
+    new = {t["id"]: t for t in tasks if "fixture" in t and t["category"] != "final"}
     assert set(new) == set(TASKS)
     assert new["exact_save"]["category"] == "sanity"
     assert all(new[t]["category"] == "challenge" for t in TASKS if t != "exact_save")

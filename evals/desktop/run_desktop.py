@@ -82,6 +82,8 @@ def run_task(agent: str, command: str, task: dict, run_dir: Path, timeout: int, 
     # Reject missing PDF tooling before opening apps or invoking a paid agent.
     if fixture == "pdf_export":
         from pypdf import PdfReader  # noqa: F401
+    if fixture and task.get("category") == "final":
+        from PIL import Image  # noqa: F401
     frames = run_dir / "frames"
     frames.mkdir(parents=True)
     stop = threading.Event()
@@ -115,7 +117,7 @@ def run_task(agent: str, command: str, task: dict, run_dir: Path, timeout: int, 
         recorder.join()
         (run_dir / "agent_output.txt").write_text(output)
         if fixture:
-            passed, detail = grade_task(fixture, SANDBOX)
+            passed, detail = grade_task(fixture, SANDBOX, output)
         else:
             check = subprocess.run(["bash", "-c", task["check"]], env={**os.environ, "AGENT_OUTPUT": output})
             passed, detail = check.returncode == 0, "Legacy task check (see README for limitations)."
@@ -197,7 +199,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--agent", default="telemetry", help="a name from agents.json")
     p.add_argument("--only", nargs="*", help="task ids to run (default: all)")
-    p.add_argument("--category", choices=["sanity", "challenge"], help="run only sanity checks or challenge tasks")
+    p.add_argument("--category", choices=["sanity", "challenge", "final"], help="run only sanity, challenge or final tasks")
     p.add_argument("--track", choices=["gui", "gui+telemetry", "outcome"], help="override the declared access track for this agent configuration")
     p.add_argument("--reps", type=int, default=1)
     p.add_argument("--timeout", type=int, default=600, help="seconds per run")

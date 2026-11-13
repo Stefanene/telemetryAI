@@ -123,5 +123,52 @@
       "fallback",
       "report.txt"
     ]
+  },
+  {
+    "id": "duck_images",
+    "category": "final",
+    "setup": "true",
+    "instruction": "Open Safari, search for duck images, and report what the third image in the image results shows.",
+    "check": "osascript -e 'tell application \"Safari\" to URL of front document' | grep -i duck | grep -Eqi 'isch|udm=2|images' && test -n \"$AGENT_OUTPUT\"",
+    "describe_keywords": [
+      "Safari",
+      "duck",
+      "images"
+    ]
+  },
+  {
+    "id": "image_code",
+    "category": "final",
+    "fixture": "image_code",
+    "instruction": "Preview is showing an image with a six-character code. Report the code exactly.",
+    "describe_keywords": ["Preview", "code"]
+  },
+  {
+    "id": "shape_count",
+    "category": "final",
+    "fixture": "shape_count",
+    "instruction": "Preview is showing a grid of colored shapes. How many red circles are in it? Answer with a number.",
+    "describe_keywords": ["Preview", "red", "circle"]
+  },
+  {
+    "id": "clock_time",
+    "category": "final",
+    "fixture": "clock_time",
+    "instruction": "Preview is showing an analog clock. Report the time it shows as H:MM.",
+    "describe_keywords": ["Preview", "clock"]
+  },
+  {
+    "id": "transcribe_image",
+    "category": "final",
+    "fixture": "transcribe_image",
+    "instruction": "Preview is showing an image of one sentence. In TextEdit, create a plain-text file at ~/telem-eval/transcript.txt containing exactly that sentence followed by a newline. Do not change unrelated.txt.",
+    "describe_keywords": ["Preview", "TextEdit", "transcript.txt"]
+  },
+  {
+    "id": "circled_file",
+    "category": "final",
+    "fixture": "circled_file",
+    "instruction": "Preview is showing a list of file names with one circled in red. In Finder, move that circled file from ~/telem-eval/inbox into ~/telem-eval/chosen. Leave the other files and unrelated.txt unchanged.",
+    "describe_keywords": ["Preview", "Finder", "chosen"]
   }
 ]
