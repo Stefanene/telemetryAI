@@ -213,3 +213,13 @@ Randomize/counterbalance mode order for the final study; the desktop cannot be r
 Remaining limitations: no persistent experience retrieval, no automatic semantic completeness proof,
 no stable window-to-document binding when macOS does not expose a document URL, and no measured live
 performance yet. Review telemetry errors and task-budget exhaustion before interpreting failures.
+
+## Screenshot privacy
+
+Screenshot filtering is independent of telemetry and knowledge graph flags. Use
+`SCREENSHOT_PRIVACY=off|masks|ocr` to disable filtering, apply fixed privacy masks,
+or additionally run local OCR redaction. The default is `off`. Keep privacy settings
+matched across ablations; unavailable masked information must not be reconstructed
+through telemetry or graph tools. Screenshot filtering does not sanitize the separate
+telemetry and artifact-inspection paths. See [Screenshot privacy](screenshot-privacy.md)
+for configuration, runtime considerations, retention, and detection limits.

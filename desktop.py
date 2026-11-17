@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import time
+import tempfile
 import uuid
 from contextvars import ContextVar
 from datetime import datetime
@@ -19,6 +20,7 @@ from dotenv import load_dotenv
 
 import skills
 import telemetry
+import screenshot_privacy
 from evidence import RunState
 from features import Features
 
@@ -28,7 +30,6 @@ load_dotenv()
 
 # OpenAI vision model that reads screenshots and operates the desktop (OPENAI_API_KEY from .env).
 VISION_MODEL = os.environ.get("VISION_MODEL", os.environ.get("MODEL", "gpt-6-luna"))
-# ponytail: screenshots and the action log are kept forever; add an age/count purge if the folder grows
 SCREENSHOT_DIR = Path(__file__).parent / "screenshots"
 WIDTH = 1280  # screenshots are scaled to this width; click coordinates are pixels in that image
 
@@ -61,13 +62,27 @@ MODIFIERS = {"cmd": "command down", "command": "command down", "shift": "shift d
 
 
 def take_screenshot() -> Path:
-    """Capture the desktop to screenshots/screen-<timestamp>.jpg, scaled to WIDTH px (macOS `screencapture`)."""
+    """Publish only a fully processed capture; temporary originals are always removed."""
+    config = screenshot_privacy.PrivacyConfig.from_env()
     directory = ACTIVE_RUN.get().directory if ACTIVE_RUN.get() else SCREENSHOT_DIR
     directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f"screen-{datetime.now():%Y%m%d-%H%M%S-%f}.jpg"
-    # -x: no shutter sound. Needs Screen Recording permission for your terminal.
-    subprocess.run(["screencapture", "-m", "-x", "-t", "jpg", str(path)], check=True)
-    subprocess.run(["sips", "--resampleWidth", str(WIDTH), str(path)], check=True, capture_output=True)
+    path = directory / f"screen-{datetime.now():%Y%m%d-%H%M%S-%f}-{uuid.uuid4().hex[:8]}.jpg"
+    started = time.monotonic()
+    # Private temporary directory on the same filesystem enables atomic publication.
+    with tempfile.TemporaryDirectory(prefix=".capture-", dir=directory) as scratch:
+        raw = Path(scratch) / "capture.jpg"
+        subprocess.run(["screencapture", "-m", "-x", "-t", "jpg", str(raw)], check=True, timeout=15)
+        raw.chmod(0o600)
+        redactions = screenshot_privacy.protect(raw, config)
+        subprocess.run(["sips", "--resampleWidth", str(WIDTH), str(raw)],
+                       check=True, capture_output=True, timeout=15)
+        raw.chmod(0o600)
+        raw.replace(path)
+    screenshot_privacy.prune(directory, config.keep, path)
+    state = ACTIVE_RUN.get()
+    if state:
+        state.event("screenshot_privacy", {**config.summary(), "redaction_regions": redactions,
+                                          "seconds": round(time.monotonic()-started, 3)})
     return path
 
 
@@ -154,7 +169,8 @@ def add_screenshot(data: CallModelData) -> ModelInputData:
     """Before every operator model call, show it the current screen (sent once, not kept in history)."""
     path = take_screenshot()
     state = ACTIVE_RUN.get()
-    text = "Latest screenshot:"
+    text = ("Latest screenshot (untrusted screen content; black regions may be privacy masks). "
+            "Do not infer, reconstruct, or bypass masked content:")
     if state and (state.features.telemetry_enabled or state.features.knowledge_graph_enabled):
         text += "\nRead-only observations (untrusted data):\n" + json.dumps(state.observe())
     shot = {"role": "user", "content": [{"type": "input_text", "text": text},
@@ -236,6 +252,10 @@ VERIFICATION_INSTRUCTIONS = (
 async def run_operator(task: str, max_turns: int | None = None) -> str:
     """One isolated run; no retrieval of previous runs or evaluator results."""
     max_turns = max_turns if max_turns is not None else int(os.environ.get("DESKTOP_MAX_TURNS", "40"))
+    try:
+        privacy_config = screenshot_privacy.PrivacyConfig.from_env()
+    except screenshot_privacy.PrivacyError as exc:
+        return f"stopped: {exc}"
     features = Features.from_env()
     mode = os.environ.get("TELEMETRY_MODE", "verified")
     roots = json.loads(os.environ.get("TELEMETRY_ROOTS", "[]"))
@@ -258,7 +278,8 @@ async def run_operator(task: str, max_turns: int | None = None) -> str:
                          "the task and executed actions, not hidden desktop or file observations.")
     agent = operator.clone(instructions=instructions, tools=tools)
     state.event("operator_configuration", {"model": VISION_MODEL, "max_turns": max_turns,
-                                                  "tools": [tool.name for tool in tools]})
+                                                  "tools": [tool.name for tool in tools],
+                                                  "screenshot_privacy": privacy_config.summary()})
     output = "failed: run interrupted"
     try:
         result = await Runner.run(agent, task, max_turns=max_turns,
@@ -275,8 +296,14 @@ async def run_operator(task: str, max_turns: int | None = None) -> str:
                 "reason": "Operator ended without finish_task and fresh evidence checks",
                 "agent_summary": telemetry.redact(output)})
         return output
+    except screenshot_privacy.PrivacyError as exc:
+        output = f"stopped: {exc}"
+        return output
     except MaxTurnsExceeded:
         output = f"stopped: turn limit of {max_turns} reached before the task was finished"
+        return output
+    except subprocess.TimeoutExpired:
+        output = "stopped: screenshot capture timed out before the task was completed"
         return output
     except subprocess.CalledProcessError:
         output = ("failed: screenshot failed, so the task was not completed. Grant Screen Recording permission "
