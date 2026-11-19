@@ -36,7 +36,16 @@ uv run agent.py
 
 Ask questions about your screen (e.g. "What am I working on?"). The conversation is remembered until you quit with an empty line.
 
-The agent decides from its system prompt when it needs to see your screen: it takes a screenshot for screen questions ("What app am I using?", "Is there an error?") and answers directly otherwise. Each screenshot prints a `[screenshot: ...]` line and is saved to `screenshots/screen-<timestamp>.jpg`. That folder is gitignored because screens can contain secrets, and nothing deletes old screenshots, so clean it out yourself.
+The agent decides from its system prompt when it needs to see your screen: it takes a screenshot for screen questions ("What app am I using?", "Is there an error?") and answers directly otherwise. Each screenshot prints a `[screenshot: ...]` line and is saved to `screenshots/screen-<timestamp>.jpg`. That folder is gitignored because screens can contain secrets. Capture retention and optional local redaction are described in [Screenshot privacy](docs/screenshot-privacy.md).
+
+## Screenshot privacy
+
+Screenshot filtering is independently configurable with `SCREENSHOT_PRIVACY=off|masks|ocr`.
+The default is `off` to preserve existing runtime and eval behavior. `masks` covers configured
+regions without OCR; `ocr` additionally detects common sensitive text locally before images
+are saved or sent to the model. Install the optional Python dependency with
+`uv sync --extra screenshot-privacy`; OCR also requires the `tesseract` executable on PATH.
+See [configuration, limitations, and eval guidance](docs/screenshot-privacy.md).
 
 ## Desktop control
 

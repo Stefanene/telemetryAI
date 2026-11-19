@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # the repo root, f
 import knowledge
 import telemetry
 from features import Features
+from screenshot_privacy import PrivacyConfig, PrivacyError
 from desktop import image_url, take_screenshot  # noqa: E402
 
 if __package__:
@@ -67,12 +68,13 @@ def record(frames: Path, stop: threading.Event, every: float = 2.0) -> None:
         try:
             take_screenshot().rename(frames / f"{n:03d}.jpg")
             n += 1
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, PrivacyError, subprocess.TimeoutExpired):
             pass
         stop.wait(every)
 
 
 def run_task(agent: str, command: str, task: dict, run_dir: Path, timeout: int, track=None) -> dict:
+    privacy_config = PrivacyConfig.from_env()  # Validate before setup or paid calls.
     features = None
     if agent in OPERATOR_AGENTS:
         command, features = operator_configuration(command)
@@ -129,6 +131,7 @@ def run_task(agent: str, command: str, task: dict, run_dir: Path, timeout: int, 
                 "file_events": changes, "model": os.environ.get("MODEL", "gpt-6-luna"),
                 "vision_model": os.environ.get("VISION_MODEL", os.environ.get("MODEL", "gpt-6-luna")),
                 "max_turns": int(os.environ.get("DESKTOP_MAX_TURNS", "40")),
+                "recorder_screenshot_privacy": privacy_config.summary(),
                 "memory": "disabled", "operator_features": features.as_dict() if features else None,
                 **completion_review(run_dir, passed)}
     finally:

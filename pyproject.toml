@@ -10,6 +10,7 @@ dependencies = [
 [project.optional-dependencies]
 desktop-eval = ["pypdf", "Pillow>=10.1"]  # Pillow: final-category task images
 graph-viz = ["Pillow>=10.1"]
+screenshot-privacy = ["Pillow>=10.1"]
 # Live graph storage uses the standard-library sqlite3 module.
 
 [dependency-groups]
