@@ -86,6 +86,38 @@ def test_action_error_is_logged_and_model_can_recover(monkeypatch, tmp_path):
     assert any("not allowed" in out for out in tool_outputs(model.inputs[1]))
 
 
+def test_run_actions_logs_each_step_and_stops_at_first_error(monkeypatch, tmp_path):
+    acted = []
+    def run_action(tool, args):
+        acted.append((tool, args))
+        if args.get("combo") == "magic":
+            raise ValueError("bad combo")
+    monkeypatch.setattr(desktop, "run_action", run_action)
+    model = use_model(monkeypatch, [
+        ("run_actions", {"actions": ["key cmd+shift+g", "type ~/a b\n", "double 3 4", "key magic", "key return"]}),
+        "Done"])
+
+    assert asyncio.run(desktop.run_operator("test")) == "Done"
+    assert acted == [("key", {"combo": "cmd+shift+g"}), ("type", {"text": "~/a b\n"}),
+                     ("click", {"x": 3, "y": 4, "double": True}), ("key", {"combo": "magic"})]
+    assert len(records(tmp_path)) == 4  # every batched action is logged; the one after the error never runs
+    output = tool_outputs(model.inputs[1])[0]
+    assert "key magic: error" in output and "key return" not in output
+    assert len(model.inputs) == 2  # one screenshot/model call for the whole batch
+
+
+def test_run_actions_caps_batch_and_rejects_bad_items(monkeypatch, tmp_path):
+    acted = []
+    monkeypatch.setattr(desktop, "run_action", lambda tool, args: acted.append(tool))
+    model = use_model(monkeypatch, [("run_actions", {"actions": ["key tab"] * 6}),
+                                    ("run_actions", {"actions": ["click 1", "key tab"]}), "Done"])
+
+    assert asyncio.run(desktop.run_operator("test")) == "Done"
+    assert acted == ["key"] * desktop.MAX_BATCH
+    assert "not run: 2 actions" in tool_outputs(model.inputs[1])[0]
+    assert "click 1: error" in tool_outputs(model.inputs[2])[-1]
+
+
 def test_bad_key_combo_is_logged_without_acting(monkeypatch, tmp_path):
     scripts = []
     monkeypatch.setattr(desktop, "_osascript", lambda *args: scripts.append(args))

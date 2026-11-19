@@ -49,7 +49,7 @@ See [configuration, limitations, and eval guidance](docs/screenshot-privacy.md).
 
 ## Desktop control
 
-With `DESKTOP_CONTROL=1` the agent also gets `operate_desktop`. That tool hands a task to a desktop operator (`desktop.py`), which sees a fresh 1280-px screenshot before every step and clicks, types and presses keys until the task is done. It drives your real mouse and keyboard, so it's off by default. Each operator run has its own `screenshots/<run-id>/actions.jsonl` and SQLite evidence graph. If clicks land off target, set `DESKTOP_SCALE` (screen points per screenshot pixel).
+With `DESKTOP_CONTROL=1` the agent also gets `operate_desktop`. That tool hands a task to a desktop operator (`desktop.py`), which sees a fresh 1280-px screenshot before every step and clicks, types and presses keys until the task is done (`run_actions` batches up to 4 of these when it doesn't need to look in between). It drives your real mouse and keyboard, so it's off by default. Each operator run has its own `screenshots/<run-id>/actions.jsonl` and SQLite evidence graph. If clicks land off target, set `DESKTOP_SCALE` (screen points per screenshot pixel). If screenshots catch half-finished animations, raise `DESKTOP_SETTLE` (multiplies the post-action wait, default 1). `DESKTOP_WIDTH` changes the screenshot width (default 1280; fewer pixels means fewer image tokens, but check accuracy first).
 
 ```bash
 DESKTOP_CONTROL=1 uv run agent.py                                  # chat, with desktop control
