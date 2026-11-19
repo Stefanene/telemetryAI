@@ -56,6 +56,8 @@ DESKTOP_CONTROL=1 uv run agent.py                                  # chat, with 
 DESKTOP_CONTROL=1 uv run agent.py "Open Safari and go to example.com"   # one task, prints a JSON result line
 ```
 
+`uv run --extra popup popup.py` opens a small launcher above the Dock. It has toggles for desktop control and privacy (OCR), and pickers for agent and task category. Send with a prompt runs that agent on the task. Send with an empty prompt runs the eval category. The panel hides while a run is going and comes back showing the exit code.
+
 ## Skills
 
 The desktop operator gets general working habits from `skills/*.md`. Currently one skill, `skills/desktop_task.md`, with sections on avoiding loops, finishing honestly, and handling files. Skills are deliberately **not** step-by-step solutions to specific tasks or apps, so eval results measure the agent rather than memorized answers. Each file has a short header and a few bullets:
