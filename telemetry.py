@@ -14,6 +14,7 @@ import stat
 import subprocess
 import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -95,12 +96,16 @@ def recent_logs(minutes: int = 1, predicate: str | None = None) -> list[str]:
 
 
 def snapshot() -> dict:
-    result = {'time': time.time()}
-    for name, collector in [('frontmost_app', frontmost_app), ('windows', window_list), ('ui', ui_tree)]:
+    def collect(collector):
         try:
-            result[name] = collector()
+            return collector()
         except (OSError, ValueError, subprocess.SubprocessError) as exc:
-            result[name] = {'status': 'unavailable', 'error': type(exc).__name__}
+            return {'status': 'unavailable', 'error': type(exc).__name__}
+    # Each collector is a separate osascript process; running them together takes as long as ui_tree alone.
+    collectors = {'frontmost_app': frontmost_app, 'windows': window_list, 'ui': ui_tree}
+    result = {'time': time.time()}
+    with ThreadPoolExecutor(len(collectors)) as pool:
+        result.update(zip(collectors, pool.map(collect, collectors.values())))
     return result
 
 

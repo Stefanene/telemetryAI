@@ -97,7 +97,8 @@ The known agent configurations declare `gui`, `gui+telemetry` or `outcome` acces
 kept separate in reports. `--track gui|gui+telemetry|outcome` records an explicit override if you change an agent's
 tools; this is a declaration, not enforcement. `telemetry` uses GUI actions plus read-only workspace/accessibility observations, so its track is
 `gui+telemetry`. `telemetry-screenshot` retains screenshot-only GUI observations. All configurations
-now default to 40 operator model turns (`DESKTOP_MAX_TURNS`, including inspection/check calls). Record model/settings and budgets when
+now default to 40 operator model turns (`DESKTOP_MAX_TURNS`, including inspection/check calls; a `run_actions` batch counts as one turn).
+The graph presets render graph images only at the end of a run (`GRAPH_VISUALIZATION=final`) to keep per-step latency down. Record model/settings and budgets when
 comparing runs; challenge cases may exhaust that budget.
 
 Offline validation (no screenshots, GUI actions, models, or API keys):
