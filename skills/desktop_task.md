@@ -29,5 +29,6 @@ triggers: always
 
 ### Observe, act, and recover
 - Identify the intended application, focused field, and destination before typing or using a destructive shortcut. After switching windows or closing a dialog, use the fresh screenshot to establish focus again.
+- If a popup reports a permission or access error and offers only an "OK" button, read it, click OK, and continue the task, and try another allowed approach if popup repeats. Note the error in your report; do not change permissions or settings to avoid it.
 - Use the smallest reversible action that advances the task. If an action fails, read the current state and try a reasoned alternative instead of replaying the same sequence.
 - If telemetry and the screenshot disagree, prefer fresh evidence for the specific fact you need. Mark unresolved conflicts as unknown; do not convert an inferred or stale relationship into an observed fact.
