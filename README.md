@@ -56,6 +56,22 @@ DESKTOP_CONTROL=1 uv run agent.py                                  # chat, with 
 DESKTOP_CONTROL=1 uv run agent.py "Open Safari and go to example.com"   # one task, prints a JSON result line
 ```
 
+`uv run --extra popup popup.py` opens an overlay above the Dock, with desktop-control and privacy (OCR) toggles and agent/category pickers. Send with a prompt runs that agent on the task; Send with an empty prompt runs the eval category. The overlay hides during live execution and returns with the submitted prompt and a selectable, scrollable answer. Structured verification status and process errors remain visible. Each submission starts a separate agent run; the panel displays the latest exchange rather than supplying conversation memory. Closing the overlay stops its active subprocess.
+
+Try the same response path without an API key or desktop actions:
+
+```bash
+uv run --extra popup popup.py --demo
+```
+
+Demo mode is labeled in the panel and disables the live agent controls. It launches a synthetic local worker that emits the same JSON result format as the agent, then displays its answer. To automatically exercise Send and save the actual rendered AppKit panel, use:
+
+```bash
+uv run --extra popup popup.py --demo --demo-screenshot /tmp/telemetry-overlay.png
+```
+
+The screenshot option requires demo mode and exits after rendering. It captures only the overlay view, not the rest of the desktop. Unit tests exercise final-answer extraction, verification status, empty/error responses, large subprocess output, cancellation, and the real offline demo subprocess. Live model behavior has not been tested without an API key.
+
 ## Skills
 
 The desktop operator gets general working habits from `skills/*.md`. Currently one skill, `skills/desktop_task.md`, with sections on avoiding loops, finishing honestly, and handling files. Skills are deliberately **not** step-by-step solutions to specific tasks or apps, so eval results measure the agent rather than memorized answers. Each file has a short header and a few bullets:
